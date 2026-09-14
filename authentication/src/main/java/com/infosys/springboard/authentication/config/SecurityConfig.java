@@ -1,0 +1,209 @@
+package com.infosys.springboard.authentication.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.infosys.springboard.authentication.security.JwtFilter;
+
+@Configuration
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final JwtFilter jwtFilter;
+
+    public SecurityConfig(JwtFilter jwtFilter) {
+        this.jwtFilter = jwtFilter;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http) throws Exception {
+
+        http
+
+                // =====================================================
+                // CSRF
+                // =====================================================
+
+                .csrf(csrf -> csrf.disable())
+
+                // =====================================================
+                // CORS
+                // =====================================================
+
+                .cors(cors -> {})
+
+                // =====================================================
+                // SESSION MANAGEMENT
+                // =====================================================
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
+                // =====================================================
+                // AUTHORIZATION
+                // =====================================================
+
+                .authorizeHttpRequests(auth -> auth
+
+                        // =================================================
+                        // PUBLIC AUTHENTICATION
+                        // =================================================
+
+                        .requestMatchers(
+                                "/auth/register",
+                                "/auth/login",
+                                "/auth/forgot-password",
+                                "/auth/reset-password"
+                        ).permitAll()
+
+                        // =================================================
+                        // CUSTOMER COUPON ENDPOINTS
+                        // =================================================
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/customer/coupons/active"
+                        ).hasRole("CUSTOMER")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/customer/coupons/validate"
+                        ).hasRole("CUSTOMER")
+
+                        // =================================================
+                        // CUSTOMER
+                        // =================================================
+
+                        .requestMatchers(
+                                "/customer/**"
+                        ).hasRole("CUSTOMER")
+
+                        // =================================================
+                        // VENDOR
+                        // =================================================
+
+                        .requestMatchers(
+                                "/vendor/**"
+                        ).hasRole("VENDOR")
+
+                        // =================================================
+                        // ADMINISTRATOR
+                        // =================================================
+
+                        .requestMatchers(
+                                "/admin/**"
+                        ).hasRole("ADMINISTRATOR")
+
+                        // =================================================
+                        // WAREHOUSE STAFF
+                        // =================================================
+
+                        .requestMatchers(
+                                "/warehouse/**"
+                        ).hasRole("WAREHOUSE_STAFF")
+
+                        // =================================================
+                        // COUPON VALIDATION
+                        // CUSTOMER ONLY
+                        // =================================================
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/coupons/validate"
+                        ).hasRole("CUSTOMER")
+
+                        // =================================================
+                        // CREATE COUPON
+                        // ADMIN ONLY
+                        // =================================================
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/coupons"
+                        ).hasRole("ADMINISTRATOR")
+
+                        // =================================================
+                        // UPDATE / TOGGLE COUPON
+                        // ADMIN ONLY
+                        // =================================================
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/coupons/**"
+                        ).hasRole("ADMINISTRATOR")
+
+                        // =================================================
+                        // DELETE COUPON
+                        // ADMIN ONLY
+                        // =================================================
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/coupons/**"
+                        ).hasRole("ADMINISTRATOR")
+
+                        // =================================================
+                        // VIEW COUPONS
+                        // ADMIN ONLY
+                        // =================================================
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/coupons/**"
+                        ).hasRole("ADMINISTRATOR")
+
+                        // =================================================
+                        // EVERYTHING ELSE
+                        // =================================================
+
+                        .anyRequest().authenticated()
+                )
+
+                // =====================================================
+                // JWT FILTER
+                // =====================================================
+
+                .addFilterBefore(
+                        jwtFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
+
+        return http.build();
+    }
+
+    // =============================================================
+    // PASSWORD ENCODER
+    // =============================================================
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+
+        return new BCryptPasswordEncoder();
+    }
+
+    // =============================================================
+    // AUTHENTICATION MANAGER
+    // =============================================================
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration)
+            throws Exception {
+
+        return configuration.getAuthenticationManager();
+    }
+}
