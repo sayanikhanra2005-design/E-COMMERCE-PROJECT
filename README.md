@@ -602,21 +602,99 @@ Sensitive credentials should not be committed to the GitHub repository.
 
 ---
 
+---
+
+## 🚀 Deployment Architecture & Modes
+
+ShopStack supports multiple deployment environments, ranging from local developer workflows to containerized and cloud architectures:
+
+```
+                  ┌─────────────────────────────────────────────────────────┐
+                  │                 GitHub Repository                       │
+                  │   https://github.com/sayanikhanra2005-design/...        │
+                  └────────────┬───────────────────────────────┬────────────┘
+                               │ (Automated CI/CD)             │ (Manual Git Pull)
+                               ▼                               ▼
+       ┌───────────────────────────────┐     ┌──────────────────────────────────┐
+       │         Vercel Edge           │     │            AWS EC2               │
+       │    (React Production CDN)     │     │      (Public Host: 16.16.78.80)  │
+       │  - Auto-builds on push        │     │                                  │
+       │  - HTTPS / SSL Global Edge    │     │   ┌───────────────────────────┐  │
+       │  - Dynamic SPA routing        │     │   │     Docker Compose        │  │
+       └───────────────┬───────────────┘     │   │                           │  │
+                       │                     │   │ ┌───────────────────────┐ │  │
+                       │ (HTTPS / REST APIs) │   │ │  shopstack-frontend   │ │  │
+                       │                     │   │ │  (Nginx Alpine :80)   │ │  │
+                       └─────────────────────┼──►│ └───────────────────────┘ │  │
+                                             │   │ ┌───────────────────────┐ │  │
+                                             │   │ │   shopstack-backend   │ │  │
+                                             │   │ │ (Spring Boot :8080)   │ │  │
+                                             │   │ └───────────┬───────────┘ │  │
+                                             │   │             │ (JDBC)      │  │
+                                             │   │ ┌───────────▼───────────┐ │  │
+                                             │   │ │   shopstack-postgres  │ │  │
+                                             │   │ │  (PostgreSQL :5432)   │ │  │
+                                             │   │ └───────────────────────┘ │  │
+                                             │   └───────────────────────────┘  │
+                                             └──────────────────────────────────┘
+```
+
+### 1. Manual AWS EC2 Deployment
+* **Workflow**: The administrator connects via SSH to the remote AWS EC2 instance (`16.16.78.80`), synchronizes the repository using `git pull origin main`, and manages service state.
+* **Characteristics**: Provides full administrative control over instance resources, logging, and environment variables without requiring automated external agents.
+
+### 2. Docker Multi-Container Deployment
+The entire platform is orchestrated through `docker-compose.yml`:
+* **`shopstack-postgres`**: PostgreSQL 18 container with persistent volume storage (`postgres_data`) and integrated healthcheck (`pg_isready`).
+* **`shopstack-backend`**: Multi-stage Java 21 container packaging the Spring Boot application, dynamically configured through `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, and `DB_PASSWORD`.
+* **`shopstack-frontend`**: Multi-stage Node 24 build container serving optimized production assets through Nginx Alpine with custom SPA routing (`try_files $uri $uri/ /index.html;`).
+
+#### Docker Compose Commands:
+```bash
+# Start all services in detached mode
+docker compose up -d --build
+
+# Inspect container status and health
+docker compose ps
+
+# View unified or service-specific logs
+docker compose logs -f backend
+docker compose logs -f frontend
+```
+
+### 3. Automated GitHub CI/CD Pipeline (Vercel Frontend)
+* **Workflow**: When frontend source code is pushed to the `main` branch on GitHub, Vercel automatically detects the commit, runs `npm run build`, and redeploys the live frontend across its global edge network.
+* **Environment Synchronization**: The Vercel frontend communicates with the EC2 backend via `VITE_API_URL`.
+
+---
+
+## 🛡️ AWS Security Group Port Configuration
+
+To ensure accessibility from external client browsers and secure backend communication, the EC2 Security Group must have the following Inbound Rules configured:
+
+| Port | Protocol | Source | Purpose | Required For |
+| :--- | :--- | :--- | :--- | :--- |
+| **22** | TCP | `Your IP` or `0.0.0.0/0` | SSH Administration | Remote instance access |
+| **80** | TCP | `0.0.0.0/0` | HTTP Web Access | React frontend (Nginx) |
+| **8080** | TCP | `0.0.0.0/0` | Spring Boot REST API | Frontend-to-Backend API calls |
+| **443** | TCP | `0.0.0.0/0` | HTTPS Secured Traffic | SSL-encrypted web and API traffic |
+
+> [!NOTE]
+> **Troubleshooting External Access**:
+> If the application is running locally inside EC2 (e.g., `curl http://localhost` returns 200 OK) but `http://16.16.78.80/` does not load in your local browser, ensure that **Port 80** and **Port 8080** are explicitly permitted under **AWS Console $\rightarrow$ EC2 $\rightarrow$ Instances $\rightarrow$ Security $\rightarrow$ Inbound Rules**.
+
+---
+
 ## 📈 Future Enhancements
 
 Possible future improvements include:
 
 * Real online payment gateway integration
-* Email notifications
 * SMS notifications
 * Advanced product search
 * Product reviews and ratings
 * Wishlist improvements
 * Advanced analytics
-* Cloud deployment
-* Docker containerization
-* Automated testing
-* Recommendation system
 * AI-powered product recommendations
 
 ---

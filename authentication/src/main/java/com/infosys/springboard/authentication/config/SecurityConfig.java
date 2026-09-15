@@ -71,20 +71,6 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // =================================================
-                        // CUSTOMER COUPON ENDPOINTS
-                        // =================================================
-
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/customer/coupons/active"
-                        ).hasRole("CUSTOMER")
-
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/customer/coupons/validate"
-                        ).hasRole("CUSTOMER")
-
-                        // =================================================
                         // CUSTOMER
                         // =================================================
 
@@ -117,18 +103,7 @@ public class SecurityConfig {
                         ).hasRole("WAREHOUSE_STAFF")
 
                         // =================================================
-                        // COUPON VALIDATION
-                        // CUSTOMER ONLY
-                        // =================================================
-
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/coupons/validate"
-                        ).hasRole("CUSTOMER")
-
-                        // =================================================
-                        // CREATE COUPON
-                        // ADMIN ONLY
+                        // ADMIN COUPON CREATION
                         // =================================================
 
                         .requestMatchers(
@@ -137,8 +112,7 @@ public class SecurityConfig {
                         ).hasRole("ADMINISTRATOR")
 
                         // =================================================
-                        // UPDATE / TOGGLE COUPON
-                        // ADMIN ONLY
+                        // ADMIN COUPON UPDATE
                         // =================================================
 
                         .requestMatchers(
@@ -147,8 +121,7 @@ public class SecurityConfig {
                         ).hasRole("ADMINISTRATOR")
 
                         // =================================================
-                        // DELETE COUPON
-                        // ADMIN ONLY
+                        // ADMIN COUPON DELETE
                         // =================================================
 
                         .requestMatchers(
@@ -157,8 +130,7 @@ public class SecurityConfig {
                         ).hasRole("ADMINISTRATOR")
 
                         // =================================================
-                        // VIEW COUPONS
-                        // ADMIN ONLY
+                        // ADMIN COUPON VIEW
                         // =================================================
 
                         .requestMatchers(

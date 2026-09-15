@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./CustomerCart.css";
 
 function CustomerCart({ cart, setCart, onCheckout }) {
 
@@ -69,7 +70,7 @@ function CustomerCart({ cart, setCart, onCheckout }) {
 
         return cart.reduce(
             (total, item) =>
-                total + Number(item.cartQuantity),
+                total + Number(item.cartQuantity || 0),
             0
         );
     };
@@ -83,8 +84,8 @@ function CustomerCart({ cart, setCart, onCheckout }) {
         return cart.reduce(
             (total, item) =>
                 total +
-                Number(item.price) *
-                Number(item.cartQuantity),
+                Number(item.price || 0) *
+                Number(item.cartQuantity || 0),
             0
         );
     };
@@ -106,7 +107,6 @@ function CustomerCart({ cart, setCart, onCheckout }) {
             return;
         }
 
-        // Validate cart quantities
         for (const item of cart) {
 
             if (
@@ -223,11 +223,21 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                                                 alt={item.name}
                                                 className="cart-product-image"
                                                 onError={(e) => {
+
                                                     e.currentTarget.style.display =
                                                         "none";
 
-                                                    e.currentTarget.nextElementSibling.style.display =
-                                                        "flex";
+                                                    if (
+                                                        e.currentTarget
+                                                            .nextElementSibling
+                                                    ) {
+
+                                                        e.currentTarget
+                                                            .nextElementSibling
+                                                            .style.display =
+                                                            "flex";
+                                                    }
+
                                                 }}
                                             />
 
@@ -236,9 +246,10 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                                         <div
                                             className="cart-product-placeholder"
                                             style={{
-                                                display: item.imageUrl
-                                                    ? "none"
-                                                    : "flex"
+                                                display:
+                                                    item.imageUrl
+                                                        ? "none"
+                                                        : "flex"
                                             }}
                                         >
                                             📦
@@ -254,16 +265,16 @@ function CustomerCart({ cart, setCart, onCheckout }) {
 
                                         {item.brand && (
 
-                                            <p>
+                                            <p className="cart-brand">
                                                 {item.brand}
                                             </p>
 
                                         )}
 
-                                        <p>
+                                        <p className="cart-price">
                                             ₹
                                             {Number(
-                                                item.price
+                                                item.price || 0
                                             ).toFixed(2)}
                                         </p>
 
@@ -282,10 +293,13 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                                 <div className="cart-quantity-controls">
 
                                     <button
+                                        type="button"
                                         onClick={() =>
                                             updateQuantity(
                                                 item.id,
-                                                Number(item.cartQuantity) - 1
+                                                Number(
+                                                    item.cartQuantity
+                                                ) - 1
                                             )
                                         }
                                     >
@@ -297,15 +311,22 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                                     </span>
 
                                     <button
+                                        type="button"
                                         onClick={() =>
                                             updateQuantity(
                                                 item.id,
-                                                Number(item.cartQuantity) + 1
+                                                Number(
+                                                    item.cartQuantity
+                                                ) + 1
                                             )
                                         }
                                         disabled={
-                                            Number(item.cartQuantity) >=
-                                            Number(item.quantity)
+                                            Number(
+                                                item.cartQuantity
+                                            ) >=
+                                            Number(
+                                                item.quantity
+                                            )
                                         }
                                     >
                                         +
@@ -319,11 +340,19 @@ function CustomerCart({ cart, setCart, onCheckout }) {
 
                                 <div className="cart-subtotal">
 
+                                    <span>
+                                        Subtotal
+                                    </span>
+
                                     <strong>
                                         ₹
                                         {(
-                                            Number(item.price) *
-                                            Number(item.cartQuantity)
+                                            Number(
+                                                item.price || 0
+                                            ) *
+                                            Number(
+                                                item.cartQuantity || 0
+                                            )
                                         ).toFixed(2)}
                                     </strong>
 
@@ -334,9 +363,12 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                                 ================================================= */}
 
                                 <button
+                                    type="button"
                                     className="cart-remove-button"
                                     onClick={() =>
-                                        removeFromCart(item.id)
+                                        removeFromCart(
+                                            item.id
+                                        )
                                     }
                                 >
                                     Remove
@@ -385,8 +417,11 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                         {/* CHECKOUT */}
 
                         <button
+                            type="button"
                             className="place-order-button"
-                            onClick={handleCheckout}
+                            onClick={
+                                handleCheckout
+                            }
                         >
                             Proceed to Checkout →
                         </button>
@@ -398,7 +433,6 @@ function CustomerCart({ cart, setCart, onCheckout }) {
             )}
 
         </div>
-
     );
 }
 

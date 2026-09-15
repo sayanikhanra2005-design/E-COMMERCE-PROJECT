@@ -25,21 +25,41 @@ function VendorProductManagement() {
   });
 
   // =========================================================
-  // FETCH VENDOR PRODUCTS
+  // EMPTY FORM
+  // =========================================================
+
+  const emptyForm = {
+    name: "",
+    category: "",
+    brand: "",
+    description: "",
+    price: "",
+    quantity: "",
+    imageUrl: "",
+  };
+
+  // =========================================================
+  // GET TOKEN
+  // =========================================================
+
+  const getToken = () => {
+    return localStorage.getItem("token");
+  };
+
+  // =========================================================
+  // FETCH PRODUCTS
+  // Used after ADD / UPDATE / DELETE
   // =========================================================
 
   const fetchProducts = async () => {
+    const token = getToken();
+
+    if (!token) {
+      setError("Please login first.");
+      return;
+    }
+
     try {
-      setError("");
-
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setError("Please login first.");
-        setLoading(false);
-        return;
-      }
-
       const response = await axios.get(
         "http://localhost:8080/vendor/products",
         {
@@ -49,86 +69,104 @@ function VendorProductManagement() {
         }
       );
 
-      setProducts(response.data);
-    } catch (err) {
-      console.error("Product loading error:", err);
+      setProducts(
+        Array.isArray(response.data)
+          ? response.data
+          : []
+      );
 
-      if (err.response?.status === 403) {
+      setError("");
+    } catch (err) {
+      console.error("FETCH PRODUCTS ERROR:", err);
+
+      if (err.response?.status === 401) {
+        setError(
+          "Your session has expired. Please login again."
+        );
+      } else if (err.response?.status === 403) {
         setError(
           "Access denied. Please login as an approved vendor."
         );
-      } else if (err.response?.status === 401) {
-        setError("Session expired. Please login again.");
       } else {
         setError("Unable to load your products.");
       }
-    } finally {
-      setLoading(false);
     }
   };
 
   // =========================================================
-  // LOAD PRODUCTS
+  // INITIAL LOAD
   // =========================================================
 
-useEffect(() => {
-  let ignore = false;
+  useEffect(() => {
+    let cancelled = false;
 
-  const loadProducts = async () => {
-    try {
-      setError("");
-
+    const loadProducts = async () => {
       const token = localStorage.getItem("token");
 
       if (!token) {
-        if (!ignore) {
+        if (!cancelled) {
           setError("Please login first.");
           setLoading(false);
         }
         return;
       }
 
-      const response = await axios.get(
-        "http://localhost:8080/vendor/products",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      try {
+        const response = await axios.get(
+          "http://localhost:8080/vendor/products",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-      if (!ignore) {
-        setProducts(response.data);
-        setLoading(false);
-      }
-    } catch (err) {
-      console.error("Product loading error:", err);
-
-      if (!ignore) {
-        if (err.response?.status === 403) {
-          setError(
-            "Access denied. Please login as an approved vendor."
+        if (!cancelled) {
+          setProducts(
+            Array.isArray(response.data)
+              ? response.data
+              : []
           );
-        } else if (err.response?.status === 401) {
-          setError("Session expired. Please login again.");
-        } else {
-          setError("Unable to load your products.");
+
+          setError("");
         }
+      } catch (err) {
+        console.error(
+          "INITIAL PRODUCTS FETCH ERROR:",
+          err
+        );
 
-        setLoading(false);
+        if (!cancelled) {
+          if (err.response?.status === 401) {
+            setError(
+              "Your session has expired. Please login again."
+            );
+          } else if (err.response?.status === 403) {
+            setError(
+              "Access denied. Please login as an approved vendor."
+            );
+          } else {
+            setError(
+              "Unable to load your products."
+            );
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    }
-  };
+    };
 
-  loadProducts();
+    loadProducts();
 
-  return () => {
-    ignore = true;
-  };
-}, []);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // =========================================================
-  // HANDLE INPUT CHANGE
+  // HANDLE INPUT
   // =========================================================
 
   const handleChange = (event) => {
@@ -138,6 +176,10 @@ useEffect(() => {
       ...previousData,
       [name]: value,
     }));
+
+    if (error) {
+      setError("");
+    }
   };
 
   // =========================================================
@@ -145,50 +187,126 @@ useEffect(() => {
   // =========================================================
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      category: "",
-      brand: "",
-      description: "",
-      price: "",
-      quantity: "",
-      imageUrl: "",
-    });
-
+    setFormData(emptyForm);
     setEditingProduct(null);
     setShowForm(false);
+    setSaving(false);
+    setError("");
   };
 
   // =========================================================
-  // ADD PRODUCT
+  // OPEN ADD FORM
+  // =========================================================
+
+  const openAddProductForm = () => {
+    setFormData(emptyForm);
+    setEditingProduct(null);
+    setMessage("");
+    setError("");
+    setShowForm(true);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  // =========================================================
+  // VALIDATE FORM
+  // =========================================================
+
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      setError("Please enter the product name.");
+      return false;
+    }
+
+    if (!formData.category.trim()) {
+      setError("Please enter the product category.");
+      return false;
+    }
+
+    if (!formData.brand.trim()) {
+      setError("Please enter the product brand.");
+      return false;
+    }
+
+    if (!formData.description.trim()) {
+      setError("Please enter the product description.");
+      return false;
+    }
+
+    if (
+      formData.price === "" ||
+      Number(formData.price) <= 0 ||
+      Number.isNaN(Number(formData.price))
+    ) {
+      setError(
+        "Please enter a valid price greater than 0."
+      );
+      return false;
+    }
+
+    if (
+      formData.quantity === "" ||
+      Number(formData.quantity) < 0 ||
+      Number.isNaN(Number(formData.quantity))
+    ) {
+      setError(
+        "Please enter a valid stock quantity."
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  // =========================================================
+  // CREATE PRODUCT
   // =========================================================
 
   const handleAddProduct = async (event) => {
     event.preventDefault();
 
+    if (saving) {
+      return;
+    }
+
+    setMessage("");
+    setError("");
+
+    if (!validateForm()) {
+      return;
+    }
+
+    const token = getToken();
+
+    if (!token) {
+      setError("Please login first.");
+      return;
+    }
+
+    const productData = {
+      name: formData.name.trim(),
+      category: formData.category.trim(),
+      brand: formData.brand.trim(),
+      description: formData.description.trim(),
+      price: Number(formData.price),
+      quantity: Number(formData.quantity),
+      imageUrl: formData.imageUrl.trim(),
+    };
+
+    console.log(
+      "ADDING PRODUCT:",
+      productData
+    );
+
     try {
       setSaving(true);
-      setMessage("");
-      setError("");
 
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setError("Please login first.");
-        return;
-      }
-
-      await axios.post(
+      const response = await axios.post(
         "http://localhost:8080/vendor/products",
-        {
-          name: formData.name,
-          category: formData.category,
-          brand: formData.brand,
-          description: formData.description,
-          price: Number(formData.price),
-          quantity: Number(formData.quantity),
-          imageUrl: formData.imageUrl,
-        },
+        productData,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -197,23 +315,65 @@ useEffect(() => {
         }
       );
 
-      setMessage("Product added successfully.");
+      console.log(
+        "PRODUCT CREATED:",
+        response.data
+      );
 
-      resetForm();
+      setMessage(
+        "Product added successfully."
+      );
+
+      setFormData(emptyForm);
+      setEditingProduct(null);
+      setShowForm(false);
 
       await fetchProducts();
-
     } catch (err) {
-      console.error("Product creation error:", err);
+      console.error(
+        "PRODUCT CREATION ERROR:",
+        err
+      );
 
-      if (err.response?.status === 403) {
+      console.error(
+        "STATUS:",
+        err.response?.status
+      );
+
+      console.error(
+        "BACKEND RESPONSE:",
+        err.response?.data
+      );
+
+      if (err.response?.status === 401) {
+        setError(
+          "Your session has expired. Please login again."
+        );
+      } else if (err.response?.status === 403) {
         setError(
           "Access denied. Please login as an approved vendor."
         );
       } else if (err.response?.status === 400) {
-        setError("Please check all product details.");
+        const backendMessage =
+          err.response?.data?.message ||
+          err.response?.data?.error;
+
+        setError(
+          backendMessage ||
+          "Invalid product details. Please check the form."
+        );
+      } else if (err.response?.status === 500) {
+        setError(
+          "Server error while adding the product. Check the Spring Boot terminal."
+        );
+      } else if (err.request) {
+        setError(
+          "Backend is not responding. Make sure Spring Boot is running on port 8080."
+        );
       } else {
-        setError("Unable to add product.");
+        setError(
+          "Unable to add product."
+        );
       }
     } finally {
       setSaving(false);
@@ -232,14 +392,22 @@ useEffect(() => {
       category: product.category || "",
       brand: product.brand || "",
       description: product.description || "",
-      price: product.price ?? "",
-      quantity: product.quantity ?? "",
+      price:
+        product.price !== null &&
+        product.price !== undefined
+          ? product.price
+          : "",
+      quantity:
+        product.quantity !== null &&
+        product.quantity !== undefined
+          ? product.quantity
+          : "",
       imageUrl: product.imageUrl || "",
     });
 
-    setShowForm(true);
     setMessage("");
     setError("");
+    setShowForm(true);
 
     window.scrollTo({
       top: 0,
@@ -254,33 +422,40 @@ useEffect(() => {
   const handleUpdateProduct = async (event) => {
     event.preventDefault();
 
-    if (!editingProduct) {
+    if (saving || !editingProduct) {
       return;
     }
 
+    setMessage("");
+    setError("");
+
+    if (!validateForm()) {
+      return;
+    }
+
+    const token = getToken();
+
+    if (!token) {
+      setError("Please login first.");
+      return;
+    }
+
+    const productData = {
+      name: formData.name.trim(),
+      category: formData.category.trim(),
+      brand: formData.brand.trim(),
+      description: formData.description.trim(),
+      price: Number(formData.price),
+      quantity: Number(formData.quantity),
+      imageUrl: formData.imageUrl.trim(),
+    };
+
     try {
       setSaving(true);
-      setMessage("");
-      setError("");
 
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setError("Please login first.");
-        return;
-      }
-
-      await axios.put(
+      const response = await axios.put(
         `http://localhost:8080/vendor/products/${editingProduct.id}`,
-        {
-          name: formData.name,
-          category: formData.category,
-          brand: formData.brand,
-          description: formData.description,
-          price: Number(formData.price),
-          quantity: Number(formData.quantity),
-          imageUrl: formData.imageUrl,
-        },
+        productData,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -289,23 +464,57 @@ useEffect(() => {
         }
       );
 
-      setMessage("Product updated successfully.");
+      console.log(
+        "PRODUCT UPDATED:",
+        response.data
+      );
 
-      resetForm();
+      setMessage(
+        "Product updated successfully."
+      );
+
+      setFormData(emptyForm);
+      setEditingProduct(null);
+      setShowForm(false);
 
       await fetchProducts();
-
     } catch (err) {
-      console.error("Product update error:", err);
+      console.error(
+        "PRODUCT UPDATE ERROR:",
+        err
+      );
 
-      if (err.response?.status === 403) {
+      console.error(
+        "STATUS:",
+        err.response?.status
+      );
+
+      console.error(
+        "BACKEND RESPONSE:",
+        err.response?.data
+      );
+
+      if (err.response?.status === 401) {
+        setError(
+          "Your session has expired. Please login again."
+        );
+      } else if (err.response?.status === 403) {
         setError(
           "You are not allowed to update this product."
         );
       } else if (err.response?.status === 400) {
-        setError("Please check all product details.");
+        const backendMessage =
+          err.response?.data?.message ||
+          err.response?.data?.error;
+
+        setError(
+          backendMessage ||
+          "Please check all product details."
+        );
       } else {
-        setError("Unable to update product.");
+        setError(
+          "Unable to update product."
+        );
       }
     } finally {
       setSaving(false);
@@ -325,16 +534,16 @@ useEffect(() => {
       return;
     }
 
+    const token = getToken();
+
+    if (!token) {
+      setError("Please login first.");
+      return;
+    }
+
     try {
       setMessage("");
       setError("");
-
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setError("Please login first.");
-        return;
-      }
 
       await axios.delete(
         `http://localhost:8080/vendor/products/${id}`,
@@ -345,19 +554,29 @@ useEffect(() => {
         }
       );
 
-      setMessage("Product deleted successfully.");
+      setMessage(
+        "Product deleted successfully."
+      );
 
       await fetchProducts();
-
     } catch (err) {
-      console.error("Delete product error:", err);
+      console.error(
+        "DELETE PRODUCT ERROR:",
+        err
+      );
 
-      if (err.response?.status === 403) {
+      if (err.response?.status === 401) {
+        setError(
+          "Your session has expired. Please login again."
+        );
+      } else if (err.response?.status === 403) {
         setError(
           "You are not allowed to delete this product."
         );
       } else {
-        setError("Unable to delete product.");
+        setError(
+          "Unable to delete product."
+        );
       }
     }
   };
@@ -396,15 +615,13 @@ useEffect(() => {
         </div>
 
         <button
+          type="button"
           className="add-product-button"
           onClick={() => {
             if (showForm) {
               resetForm();
             } else {
-              setShowForm(true);
-              setEditingProduct(null);
-              setMessage("");
-              setError("");
+              openAddProductForm();
             }
           }}
         >
@@ -442,11 +659,23 @@ useEffect(() => {
       {showForm && (
         <div className="product-form-card">
 
-          <h3>
-            {editingProduct
-              ? "Edit Product"
-              : "Add New Product"}
-          </h3>
+          <div className="product-form-header">
+
+            <div>
+              <h3>
+                {editingProduct
+                  ? "Edit Product"
+                  : "Add New Product"}
+              </h3>
+
+              <p>
+                {editingProduct
+                  ? "Update your product details below."
+                  : "Enter the details of your new product."}
+              </p>
+            </div>
+
+          </div>
 
           <form
             onSubmit={
@@ -454,6 +683,7 @@ useEffect(() => {
                 ? handleUpdateProduct
                 : handleAddProduct
             }
+            noValidate
           >
 
             <div className="form-grid">
@@ -462,16 +692,18 @@ useEffect(() => {
 
               <div className="form-group">
 
-                <label>
+                <label htmlFor="product-name">
                   Product Name
                 </label>
 
                 <input
+                  id="product-name"
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="Enter product name"
+                  autoComplete="off"
                   required
                 />
 
@@ -481,16 +713,18 @@ useEffect(() => {
 
               <div className="form-group">
 
-                <label>
+                <label htmlFor="product-category">
                   Category
                 </label>
 
                 <input
+                  id="product-category"
                   type="text"
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
                   placeholder="Example: Electronics"
+                  autoComplete="off"
                   required
                 />
 
@@ -500,16 +734,18 @@ useEffect(() => {
 
               <div className="form-group">
 
-                <label>
+                <label htmlFor="product-brand">
                   Brand
                 </label>
 
                 <input
+                  id="product-brand"
                   type="text"
                   name="brand"
                   value={formData.brand}
                   onChange={handleChange}
                   placeholder="Example: Sony"
+                  autoComplete="off"
                   required
                 />
 
@@ -519,11 +755,12 @@ useEffect(() => {
 
               <div className="form-group">
 
-                <label>
+                <label htmlFor="product-price">
                   Price
                 </label>
 
                 <input
+                  id="product-price"
                   type="number"
                   name="price"
                   value={formData.price}
@@ -540,17 +777,19 @@ useEffect(() => {
 
               <div className="form-group">
 
-                <label>
+                <label htmlFor="product-quantity">
                   Stock Quantity
                 </label>
 
                 <input
+                  id="product-quantity"
                   type="number"
                   name="quantity"
                   value={formData.quantity}
                   onChange={handleChange}
                   placeholder="Enter stock quantity"
                   min="0"
+                  step="1"
                   required
                 />
 
@@ -560,11 +799,12 @@ useEffect(() => {
 
               <div className="form-group">
 
-                <label>
+                <label htmlFor="product-image">
                   Image URL
                 </label>
 
                 <input
+                  id="product-image"
                   type="url"
                   name="imageUrl"
                   value={formData.imageUrl}
@@ -580,11 +820,12 @@ useEffect(() => {
 
             <div className="form-group">
 
-              <label>
+              <label htmlFor="product-description">
                 Description
               </label>
 
               <textarea
+                id="product-description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
@@ -597,7 +838,7 @@ useEffect(() => {
 
             {/* IMAGE PREVIEW */}
 
-            {formData.imageUrl && (
+            {formData.imageUrl.trim() && (
               <div className="image-preview">
 
                 <img
@@ -612,31 +853,70 @@ useEffect(() => {
               </div>
             )}
 
-            {/* FORM BUTTONS */}
+            {/* SUBMIT BUTTONS */}
 
-            <div className="form-actions">
+            <div
+              className="product-submit-section"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "15px",
+                width: "100%",
+                minHeight: "70px",
+                padding: "15px 0",
+                marginTop: "20px",
+                position: "relative",
+                zIndex: 1000,
+                overflow: "visible",
+              }}
+            >
 
               <button
                 type="submit"
                 className="save-product-button"
                 disabled={saving}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: "150px",
+                  height: "45px",
+                  cursor: saving
+                    ? "not-allowed"
+                    : "pointer",
+                  position: "relative",
+                  zIndex: 1001,
+                }}
               >
                 {saving
-                  ? "Saving..."
+                  ? editingProduct
+                    ? "Updating..."
+                    : "Adding Product..."
                   : editingProduct
                   ? "Update Product"
                   : "Add Product"}
               </button>
 
-              {editingProduct && (
-                <button
-                  type="button"
-                  className="cancel-edit-button"
-                  onClick={resetForm}
-                >
-                  Cancel
-                </button>
-              )}
+              <button
+                type="button"
+                className="cancel-product-button"
+                onClick={resetForm}
+                disabled={saving}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: "120px",
+                  height: "45px",
+                  cursor: saving
+                    ? "not-allowed"
+                    : "pointer",
+                  position: "relative",
+                  zIndex: 1001,
+                }}
+              >
+                Cancel
+              </button>
 
             </div>
 
@@ -651,15 +931,21 @@ useEffect(() => {
 
       <div className="product-list-card">
 
-        <h3>
-          Your Products ({products.length})
-        </h3>
+        <div className="product-list-header">
+
+          <h3>
+            Your Products ({products.length})
+          </h3>
+
+        </div>
 
         {products.length === 0 ? (
 
           <div className="no-products">
 
-            <div>📦</div>
+            <div className="no-products-icon">
+              📦
+            </div>
 
             <h4>
               No Products Yet
@@ -696,8 +982,6 @@ useEffect(() => {
 
                   <tr key={product.id}>
 
-                    {/* PRODUCT */}
-
                     <td>
 
                       <div className="product-name">
@@ -708,6 +992,10 @@ useEffect(() => {
                             src={product.imageUrl}
                             alt={product.name}
                             className="product-image"
+                            onError={(event) => {
+                              event.currentTarget.style.display =
+                                "none";
+                            }}
                           />
 
                         ) : (
@@ -726,33 +1014,28 @@ useEffect(() => {
 
                     </td>
 
-                    {/* CATEGORY */}
-
                     <td>
                       {product.category}
                     </td>
-
-                    {/* BRAND */}
 
                     <td>
                       {product.brand}
                     </td>
 
-                    {/* PRICE */}
-
                     <td>
-                      ₹{Number(product.price).toFixed(2)}
+                      ₹
+                      {Number(
+                        product.price || 0
+                      ).toFixed(2)}
                     </td>
-
-                    {/* STOCK */}
 
                     <td>
 
                       <span
                         className={
-                          product.quantity === 0
+                          Number(product.quantity) === 0
                             ? "stock-out"
-                            : product.quantity <= 5
+                            : Number(product.quantity) <= 5
                             ? "stock-low"
                             : "stock-in"
                         }
@@ -762,13 +1045,12 @@ useEffect(() => {
 
                     </td>
 
-                    {/* ACTIONS */}
-
                     <td>
 
                       <div className="product-actions">
 
                         <button
+                          type="button"
                           className="edit-product-button"
                           onClick={() =>
                             startEdit(product)
@@ -778,6 +1060,7 @@ useEffect(() => {
                         </button>
 
                         <button
+                          type="button"
                           className="delete-product-button"
                           onClick={() =>
                             deleteProduct(product.id)

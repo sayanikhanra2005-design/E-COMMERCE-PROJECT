@@ -12,7 +12,10 @@ function CustomerCheckout({
 
     const [step, setStep] = useState(1);
 
+    // =========================================================
     // ADDRESS
+    // =========================================================
+
     const [addresses, setAddresses] = useState([]);
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [loadingAddresses, setLoadingAddresses] = useState(true);
@@ -31,38 +34,102 @@ function CustomerCheckout({
         phoneNumber: ""
     });
 
+    // =========================================================
     // PAYMENT
+    // =========================================================
+
     const [paymentMethod, setPaymentMethod] = useState("");
 
+    // =========================================================
     // ORDER
+    // =========================================================
+
     const [placingOrder, setPlacingOrder] = useState(false);
     const [paymentProcessing, setPaymentProcessing] = useState(false);
     const [orderError, setOrderError] = useState("");
 
+    // =========================================================
     // COUPON
+    // =========================================================
+
     const [couponCode, setCouponCode] = useState("");
     const [coupons, setCoupons] = useState([]);
     const [couponLoading, setCouponLoading] = useState(false);
-
     const [couponMessage, setCouponMessage] = useState("");
     const [couponError, setCouponError] = useState("");
     const [appliedCoupon, setAppliedCoupon] = useState(null);
 
     // =========================================================
+    // SAFE CART QUANTITY
+    // =========================================================
+
+    const getCartQuantity = (item) => {
+
+        const quantity = Number(
+            item?.cartQuantity
+        );
+
+        if (
+            Number.isFinite(quantity) &&
+            quantity > 0
+        ) {
+            return quantity;
+        }
+
+        return 0;
+    };
+
+    // =========================================================
+    // AVAILABLE PRODUCT STOCK
+    // =========================================================
+
+    const getAvailableQuantity = (item) => {
+
+        const availableQuantity = Number(
+            item?.availableQuantity ??
+            item?.stockQuantity ??
+            item?.quantity ??
+            0
+        );
+
+        if (
+            Number.isFinite(
+                availableQuantity
+            )
+        ) {
+            return availableQuantity;
+        }
+
+        return 0;
+    };
+
+    // =========================================================
     // CART CALCULATIONS
     // =========================================================
 
-    const subtotal = cart.reduce(
-        (total, item) =>
-            total +
-            Number(item.price || 0) *
-            Number(item.cartQuantity || item.quantity || 0),
+    const subtotal = (cart || []).reduce(
+        (total, item) => {
+
+            const price = Number(
+                item?.price ?? 0
+            );
+
+            const quantity =
+                getCartQuantity(item);
+
+            return total + (
+                price * quantity
+            );
+        },
         0
     );
 
-    const discount = appliedCoupon?.discountAmount
-        ? Number(appliedCoupon.discountAmount)
-        : 0;
+    const discount =
+        appliedCoupon?.discountAmount
+            ? Number(
+                appliedCoupon.discountAmount
+            )
+            : 0;
 
     const finalTotal = Math.max(
         subtotal - discount,
@@ -75,57 +142,101 @@ function CustomerCheckout({
 
     const getFriendlyOrderError = (error) => {
 
-        const status = error.response?.status;
+        if (!error.response) {
+
+            return "Unable to connect to the server. Please check your connection and try again.";
+        }
+
+        const status =
+            error.response?.status;
 
         const backendMessage =
             error.response?.data?.message ||
             error.response?.data?.error ||
             "";
 
-        const message = backendMessage.toLowerCase();
+        const message =
+            String(
+                backendMessage
+            ).toLowerCase();
 
-        if (status === 401 || status === 403) {
+        if (status === 401) {
+
             return "Your session has expired. Please login again.";
+        }
+
+        if (status === 403) {
+
+            return "You are not authorized to place this order.";
         }
 
         if (
             message.includes("stock") ||
             message.includes("insufficient") ||
             message.includes("inventory") ||
-            message.includes("quantity")
+            message.includes("quantity") ||
+            message.includes("available")
         ) {
-            return "Some products do not have enough stock. Please update your cart.";
+
+            return "Some products do not have enough stock. Please update your cart and try again.";
+        }
+
+        if (
+            message.includes("product") &&
+            (
+                message.includes("not found") ||
+                message.includes("unavailable") ||
+                message.includes("deleted")
+            )
+        ) {
+
+            return "One of the products in your cart is no longer available.";
+        }
+
+        if (
+            message.includes("address") &&
+            (
+                message.includes("not found") ||
+                message.includes("invalid") ||
+                message.includes("required")
+            )
+        ) {
+
+            return "The selected delivery address is no longer available. Please select another address.";
         }
 
         if (
             message.includes("coupon") ||
             message.includes("discount")
         ) {
-            return "The selected coupon is invalid or has expired.";
+
+            return "The selected coupon is invalid, expired, or cannot be used for this order.";
         }
 
         if (
             message.includes("payment") ||
             message.includes("transaction")
         ) {
+
             return "Payment could not be completed. Please try another payment method.";
         }
 
-        if (message.includes("product not found")) {
-            return "One of the products in your cart is no longer available.";
+        if (status === 400) {
+
+            return "Please check your order details and try again.";
+        }
+
+        if (status === 404) {
+
+            return "The requested information could not be found. Please refresh the page and try again.";
         }
 
         if (status >= 500) {
+
             return "Server error. Please try again later.";
         }
 
-        if (status === 400) {
-            return backendMessage ||
-                "Please check your order details and try again.";
-        }
-
-        return backendMessage ||
-            "Unable to place your order. Please try again.";
+        return "Unable to place your order. Please try again.";
     };
 
     // =========================================================
@@ -140,46 +251,63 @@ function CustomerCheckout({
 
             try {
 
-                const token = localStorage.getItem("token");
+                const token =
+                    localStorage.getItem("token");
 
                 if (!token) {
 
                     if (!cancelled) {
+
                         setAddressError(
                             "Please login to continue."
                         );
-                        setLoadingAddresses(false);
+
+                        setLoadingAddresses(
+                            false
+                        );
                     }
 
                     return;
                 }
 
-                const response = await axios.get(
-                    "http://localhost:8080/customer/addresses",
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`
+                const response =
+                    await axios.get(
+                        "http://localhost:8080/customer/addresses",
+                        {
+                            headers: {
+                                Authorization:
+                                    `Bearer ${token}`
+                            }
                         }
-                    }
-                );
+                    );
 
                 if (!cancelled) {
 
                     const loadedAddresses =
-                        Array.isArray(response.data)
+                        Array.isArray(
+                            response.data
+                        )
                             ? response.data
                             : [];
 
-                    setAddresses(loadedAddresses);
+                    setAddresses(
+                        loadedAddresses
+                    );
 
-                    if (loadedAddresses.length > 0) {
+                    if (
+                        loadedAddresses.length > 0
+                    ) {
+
                         setSelectedAddress(
                             loadedAddresses[0]
                         );
                     }
 
                     setAddressError("");
-                    setLoadingAddresses(false);
+
+                    setLoadingAddresses(
+                        false
+                    );
                 }
 
             } catch (error) {
@@ -192,12 +320,19 @@ function CustomerCheckout({
                 if (!cancelled) {
 
                     if (
-                        error.response?.status === 401 ||
-                        error.response?.status === 403
+                        error.response?.status === 401
                     ) {
 
                         setAddressError(
                             "Your session has expired. Please login again."
+                        );
+
+                    } else if (
+                        error.response?.status === 403
+                    ) {
+
+                        setAddressError(
+                            "You are not authorized to access your addresses."
                         );
 
                     } else if (
@@ -208,6 +343,14 @@ function CustomerCheckout({
                             "Server error. Please try again later."
                         );
 
+                    } else if (
+                        !error.response
+                    ) {
+
+                        setAddressError(
+                            "Unable to connect to the server. Please try again."
+                        );
+
                     } else {
 
                         setAddressError(
@@ -215,7 +358,9 @@ function CustomerCheckout({
                         );
                     }
 
-                    setLoadingAddresses(false);
+                    setLoadingAddresses(
+                        false
+                    );
                 }
             }
         };
@@ -223,6 +368,7 @@ function CustomerCheckout({
         loadAddresses();
 
         return () => {
+
             cancelled = true;
         };
 
@@ -247,19 +393,28 @@ function CustomerCheckout({
                     return;
                 }
 
-                const response = await axios.get(
-                    "http://localhost:8080/customer/coupons/active",
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`
+                const response =
+                    await axios.get(
+                        "http://localhost:8080/customer/coupons/active",
+                        {
+                            headers: {
+                                Authorization:
+                                    `Bearer ${token}`
+                            }
                         }
-                    }
+                    );
+
+                console.log(
+                    "ACTIVE COUPONS:",
+                    response.data
                 );
 
                 if (!cancelled) {
 
                     setCoupons(
-                        Array.isArray(response.data)
+                        Array.isArray(
+                            response.data
+                        )
                             ? response.data
                             : []
                     );
@@ -273,6 +428,7 @@ function CustomerCheckout({
                 );
 
                 if (!cancelled) {
+
                     setCoupons([]);
                 }
             }
@@ -281,6 +437,7 @@ function CustomerCheckout({
         loadCoupons();
 
         return () => {
+
             cancelled = true;
         };
 
@@ -297,10 +454,12 @@ function CustomerCheckout({
             value
         } = e.target;
 
-        setAddressForm((previous) => ({
-            ...previous,
-            [name]: value
-        }));
+        setAddressForm(
+            (previous) => ({
+                ...previous,
+                [name]: value
+            })
+        );
     };
 
     // =========================================================
@@ -309,15 +468,24 @@ function CustomerCheckout({
 
     const validateAddress = () => {
 
-        if (!addressForm.addressLine.trim()) {
+        if (
+            !addressForm.addressLine.trim()
+        ) {
+
             return "Address is required.";
         }
 
-        if (!addressForm.city.trim()) {
+        if (
+            !addressForm.city.trim()
+        ) {
+
             return "City is required.";
         }
 
-        if (!addressForm.state.trim()) {
+        if (
+            !addressForm.state.trim()
+        ) {
+
             return "State is required.";
         }
 
@@ -326,10 +494,14 @@ function CustomerCheckout({
                 addressForm.postalCode.trim()
             )
         ) {
+
             return "Please enter a valid postal code.";
         }
 
-        if (!addressForm.country.trim()) {
+        if (
+            !addressForm.country.trim()
+        ) {
+
             return "Country is required.";
         }
 
@@ -338,6 +510,7 @@ function CustomerCheckout({
                 addressForm.phoneNumber.trim()
             )
         ) {
+
             return "Please enter a valid 10-digit phone number.";
         }
 
@@ -374,42 +547,62 @@ function CustomerCheckout({
             const token =
                 localStorage.getItem("token");
 
-            const response = await axios.post(
-                "http://localhost:8080/customer/addresses",
-                addressForm,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
+            if (!token) {
 
-            const newAddress = response.data;
+                setAddressError(
+                    "Your session has expired. Please login again."
+                );
+
+                return;
+            }
+
+            const response =
+                await axios.post(
+                    "http://localhost:8080/customer/addresses",
+                    addressForm,
+                    {
+                        headers: {
+                            Authorization:
+                                `Bearer ${token}`
+                        }
+                    }
+                );
+
+            const newAddress =
+                response.data;
 
             const addressResponse =
                 await axios.get(
                     "http://localhost:8080/customer/addresses",
                     {
                         headers: {
-                            Authorization: `Bearer ${token}`
+                            Authorization:
+                                `Bearer ${token}`
                         }
                     }
                 );
 
             const updatedAddresses =
-                Array.isArray(addressResponse.data)
+                Array.isArray(
+                    addressResponse.data
+                )
                     ? addressResponse.data
                     : [];
 
-            setAddresses(updatedAddresses);
+            setAddresses(
+                updatedAddresses
+            );
 
             const createdAddress =
                 updatedAddresses.find(
                     (address) =>
-                        address.id === newAddress?.id
+                        address.id ===
+                        newAddress?.id
                 ) || newAddress;
 
-            setSelectedAddress(createdAddress);
+            setSelectedAddress(
+                createdAddress
+            );
 
             setAddressForm({
                 addressLine: "",
@@ -434,12 +627,19 @@ function CustomerCheckout({
             );
 
             if (
-                error.response?.status === 401 ||
-                error.response?.status === 403
+                error.response?.status === 401
             ) {
 
                 setAddressError(
                     "Your session has expired. Please login again."
+                );
+
+            } else if (
+                error.response?.status === 403
+            ) {
+
+                setAddressError(
+                    "You are not authorized to save an address."
                 );
 
             } else if (
@@ -450,10 +650,17 @@ function CustomerCheckout({
                     "Server error. Please try again later."
                 );
 
+            } else if (!error.response) {
+
+                setAddressError(
+                    "Unable to connect to the server. Please try again."
+                );
+
             } else {
 
                 setAddressError(
                     error.response?.data?.message ||
+                    error.response?.data?.error ||
                     "Unable to save the new address."
                 );
             }
@@ -524,6 +731,15 @@ function CustomerCheckout({
                 return;
             }
 
+            if (!selectedAddress.id) {
+
+                setAddressError(
+                    "Please select a valid delivery address."
+                );
+
+                return;
+            }
+
             if (showAddAddress) {
 
                 setAddressError(
@@ -546,8 +762,12 @@ function CustomerCheckout({
             }
         }
 
-        setStep((previous) =>
-            Math.min(previous + 1, 3)
+        setStep(
+            (previous) =>
+                Math.min(
+                    previous + 1,
+                    3
+                )
         );
     };
 
@@ -559,8 +779,12 @@ function CustomerCheckout({
 
         setOrderError("");
 
-        setStep((previous) =>
-            Math.max(previous - 1, 1)
+        setStep(
+            (previous) =>
+                Math.max(
+                    previous - 1,
+                    1
+                )
         );
     };
 
@@ -570,12 +794,13 @@ function CustomerCheckout({
 
     const handleApplyCoupon = async () => {
 
-        const code = couponCode.trim();
+        const code =
+            couponCode.trim();
 
         if (!code) {
 
             setCouponError(
-                "Please enter a coupon code."
+                "Please select or enter a coupon code."
             );
 
             setCouponMessage("");
@@ -602,21 +827,29 @@ function CustomerCheckout({
                 return;
             }
 
-            const response = await axios.post(
-                "http://localhost:8080/coupons/validate",
-                null,
-                {
-                    params: {
-                        code: code,
-                        orderAmount: subtotal
-                    },
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
+            // =================================================
+            // IMPORTANT:
+            // CUSTOMER COUPON VALIDATION ENDPOINT
+            // =================================================
 
-            const data = response.data;
+            const response =
+                await axios.post(
+                    "http://localhost:8080/customer/coupons/validate",
+                    null,
+                    {
+                        params: {
+                            code: code,
+                            orderAmount: subtotal
+                        },
+                        headers: {
+                            Authorization:
+                                `Bearer ${token}`
+                        }
+                    }
+                );
+
+            const data =
+                response.data;
 
             console.log(
                 "Coupon validation response:",
@@ -633,7 +866,9 @@ function CustomerCheckout({
                         0
                     );
 
-                if (discountAmount <= 0) {
+                if (
+                    discountAmount <= 0
+                ) {
 
                     setAppliedCoupon(null);
 
@@ -669,7 +904,7 @@ function CustomerCheckout({
 
                 setCouponError(
                     data?.message ||
-                    "Invalid or expired coupon."
+                    "Invalid, expired, or unavailable coupon."
                 );
             }
 
@@ -680,11 +915,26 @@ function CustomerCheckout({
                 error
             );
 
+            console.error(
+                "Coupon status:",
+                error.response?.status
+            );
+
+            console.error(
+                "Coupon response:",
+                error.response?.data
+            );
+
             setAppliedCoupon(null);
 
-            if (
-                error.response?.status === 401 ||
-                error.response?.status === 403
+            if (!error.response) {
+
+                setCouponError(
+                    "Unable to connect to the server. Please try again."
+                );
+
+            } else if (
+                error.response?.status === 401
             ) {
 
                 setCouponError(
@@ -692,11 +942,19 @@ function CustomerCheckout({
                 );
 
             } else if (
+                error.response?.status === 403
+            ) {
+
+                setCouponError(
+                    "You are not authorized to apply coupons."
+                );
+
+            } else if (
                 error.response?.status >= 500
             ) {
 
                 setCouponError(
-                    "Server error while validating coupon. Please try again."
+                    "Server error while validating coupon. Please try again later."
                 );
 
             } else {
@@ -704,7 +962,7 @@ function CustomerCheckout({
                 setCouponError(
                     error.response?.data?.message ||
                     error.response?.data?.error ||
-                    "Invalid or expired coupon."
+                    "Invalid, expired, or unavailable coupon."
                 );
             }
 
@@ -732,10 +990,28 @@ function CustomerCheckout({
 
     const handlePlaceOrder = async () => {
 
+        if (
+            placingOrder ||
+            paymentProcessing
+        ) {
+            return;
+        }
+
         if (!selectedAddress) {
 
             setOrderError(
                 "Please select a delivery address."
+            );
+
+            setStep(1);
+
+            return;
+        }
+
+        if (!selectedAddress.id) {
+
+            setOrderError(
+                "Please select a valid delivery address."
             );
 
             setStep(1);
@@ -754,7 +1030,10 @@ function CustomerCheckout({
             return;
         }
 
-        if (!cart || cart.length === 0) {
+        if (
+            !cart ||
+            cart.length === 0
+        ) {
 
             setOrderError(
                 "Your cart is empty."
@@ -763,29 +1042,109 @@ function CustomerCheckout({
             return;
         }
 
+        const token =
+            localStorage.getItem("token");
+
+        if (!token) {
+
+            setOrderError(
+                "Your session has expired. Please login again."
+            );
+
+            setPlacingOrder(false);
+            setPaymentProcessing(false);
+
+            return;
+        }
+
+        // =====================================================
+        // VALIDATE CART QUANTITIES AND STOCK
+        // =====================================================
+
+        for (const item of cart) {
+
+            const cartQuantity =
+                getCartQuantity(item);
+
+            const availableQuantity =
+                getAvailableQuantity(item);
+
+            if (cartQuantity <= 0) {
+
+                setOrderError(
+                    `Invalid quantity for ${item.name}. Please update your cart.`
+                );
+
+                setStep(1);
+
+                return;
+            }
+
+            if (
+                availableQuantity <= 0
+            ) {
+
+                setOrderError(
+                    `${item.name} is currently out of stock.`
+                );
+
+                setStep(1);
+
+                return;
+            }
+
+            if (
+                cartQuantity >
+                availableQuantity
+            ) {
+
+                setOrderError(
+                    `Only ${availableQuantity} units of ${item.name} are available. Please update your cart.`
+                );
+
+                setStep(1);
+
+                return;
+            }
+        }
+
         try {
 
             setPlacingOrder(true);
             setPaymentProcessing(true);
             setOrderError("");
 
-            const token =
-                localStorage.getItem("token");
+            if (!selectedAddress?.id) {
+
+                setOrderError(
+                    "Please select a valid delivery address."
+                );
+
+                setStep(1);
+
+                setPlacingOrder(false);
+                setPaymentProcessing(false);
+
+                return;
+            }
 
             const orderItems =
-                cart.map((item) => ({
-                    productId: Number(item.id),
+                cart.map(
+                    (item) => ({
 
-                    quantity: Number(
-                        item.cartQuantity ||
-                        item.quantity ||
-                        1
-                    )
-                }));
+                        productId:
+                            Number(item.id),
+
+                        quantity:
+                            getCartQuantity(item)
+
+                    })
+                );
 
             const orderRequest = {
 
-                items: orderItems,
+                items:
+                    orderItems,
 
                 couponCode:
                     appliedCoupon?.valid
@@ -793,11 +1152,18 @@ function CustomerCheckout({
                         : null,
 
                 addressId:
-                    Number(selectedAddress.id),
+                    Number(
+                        selectedAddress.id
+                    ),
 
                 paymentMethod:
                     paymentMethod
             };
+
+            console.log(
+                "ORDER REQUEST:",
+                orderRequest
+            );
 
             const response =
                 await axios.post(
@@ -818,8 +1184,10 @@ function CustomerCheckout({
 
             setPaymentProcessing(false);
             setPlacingOrder(false);
+            setOrderError("");
 
             if (onOrderPlaced) {
+
                 onOrderPlaced(
                     response.data
                 );
@@ -832,11 +1200,23 @@ function CustomerCheckout({
                 error
             );
 
+            console.error(
+                "Order status:",
+                error.response?.status
+            );
+
+            console.error(
+                "Order response:",
+                error.response?.data
+            );
+
             setPaymentProcessing(false);
             setPlacingOrder(false);
 
             setOrderError(
-                getFriendlyOrderError(error)
+                getFriendlyOrderError(
+                    error
+                )
             );
         }
     };
@@ -845,9 +1225,13 @@ function CustomerCheckout({
     // EMPTY CART
     // =========================================================
 
-    if (!cart || cart.length === 0) {
+    if (
+        !cart ||
+        cart.length === 0
+    ) {
 
         return (
+
             <div className="checkout-empty">
 
                 <div className="checkout-empty-icon">
@@ -865,7 +1249,9 @@ function CustomerCheckout({
 
                 <button
                     className="checkout-back-btn"
-                    onClick={onBackToCart}
+                    onClick={
+                        onBackToCart
+                    }
                 >
                     ← Back to Cart
                 </button>
@@ -888,7 +1274,9 @@ function CustomerCheckout({
 
                 <button
                     className="checkout-back-btn"
-                    onClick={onBackToCart}
+                    onClick={
+                        onBackToCart
+                    }
                 >
                     ← Back to Cart
                 </button>
@@ -918,10 +1306,15 @@ function CustomerCheckout({
                             : "checkout-step"
                     }
                 >
-                    <span>1</span>
+
+                    <span>
+                        1
+                    </span>
+
                     <label>
                         Address
                     </label>
+
                 </div>
 
                 <div className="checkout-step-line"></div>
@@ -933,10 +1326,15 @@ function CustomerCheckout({
                             : "checkout-step"
                     }
                 >
-                    <span>2</span>
+
+                    <span>
+                        2
+                    </span>
+
                     <label>
                         Payment
                     </label>
+
                 </div>
 
                 <div className="checkout-step-line"></div>
@@ -948,17 +1346,24 @@ function CustomerCheckout({
                             : "checkout-step"
                     }
                 >
-                    <span>3</span>
+
+                    <span>
+                        3
+                    </span>
+
                     <label>
                         Review
                     </label>
+
                 </div>
 
             </div>
 
             <div className="checkout-layout">
 
-                {/* MAIN CONTENT */}
+                {/* =================================================
+                    MAIN CONTENT
+                ================================================= */}
 
                 <div className="checkout-main">
 
@@ -1091,6 +1496,7 @@ function CustomerCheckout({
                                             )}
 
                                         </div>
+
                                     )}
 
                                     {!showAddAddress && (
@@ -1287,9 +1693,11 @@ function CustomerCheckout({
                                                             savingAddress
                                                         }
                                                     >
-                                                        {savingAddress
-                                                            ? "Saving..."
-                                                            : "Save Address"}
+                                                        {
+                                                            savingAddress
+                                                                ? "Saving..."
+                                                                : "Save Address"
+                                                        }
                                                     </button>
 
                                                 </div>
@@ -1297,6 +1705,7 @@ function CustomerCheckout({
                                             </form>
 
                                         </div>
+
                                     )}
 
                                     <div className="checkout-navigation">
@@ -1317,9 +1726,11 @@ function CustomerCheckout({
                                     </div>
 
                                 </>
+
                             )}
 
                         </div>
+
                     )}
 
                     {/* =================================================
@@ -1488,6 +1899,7 @@ function CustomerCheckout({
                             </div>
 
                         </div>
+
                     )}
 
                     {/* =================================================
@@ -1529,6 +1941,7 @@ function CustomerCheckout({
                                     </h3>
 
                                     <button
+                                        type="button"
                                         onClick={() =>
                                             setStep(1)
                                         }
@@ -1575,6 +1988,7 @@ function CustomerCheckout({
                                         </p>
 
                                     </div>
+
                                 )}
 
                             </div>
@@ -1590,6 +2004,7 @@ function CustomerCheckout({
                                     </h3>
 
                                     <button
+                                        type="button"
                                         onClick={() =>
                                             setStep(2)
                                         }
@@ -1600,93 +2015,120 @@ function CustomerCheckout({
                                 </div>
 
                                 <p>
-                                    {paymentMethod === "COD"
-                                        ? "💵 Cash on Delivery"
-                                        : paymentMethod === "CARD"
-                                            ? "💳 Credit / Debit Card"
-                                            : "📱 UPI"}
+                                    {
+                                        paymentMethod === "COD"
+                                            ? "💵 Cash on Delivery"
+                                            : paymentMethod === "CARD"
+                                                ? "💳 Credit / Debit Card"
+                                                : "📱 UPI"
+                                    }
                                 </p>
 
                             </div>
 
-                            {/* COUPON */}
+                            {/* =================================================
+                                COUPON
+                            ================================================= */}
 
                             <div className="review-section">
 
-                                <h3>
-                                    🎟️ Coupon
-                                </h3>
+                                <div className="review-section-header">
+
+                                    <h3>
+                                        🎟️ Coupon
+                                    </h3>
+
+                                </div>
 
                                 {!appliedCoupon ? (
 
                                     <div className="coupon-box">
 
-                                        <input
-                                            type="text"
-                                            value={couponCode}
-                                            onChange={(e) => {
-
-                                                setCouponCode(
-                                                    e.target.value.toUpperCase()
-                                                );
-
-                                                setCouponError("");
-                                                setCouponMessage("");
-                                            }}
-                                            placeholder="Enter coupon code"
-                                        />
-
-                                        {/* DROPDOWN */}
-
-                                        {coupons.length > 0 && (
+                                        <div className="coupon-select-wrapper">
 
                                             <select
                                                 className="coupon-dropdown"
-                                                value=""
+                                                value={
+                                                    couponCode
+                                                }
                                                 onChange={(e) => {
 
-                                                    if (
-                                                        e.target.value
-                                                    ) {
+                                                    const selectedCode =
+                                                        e.target.value;
 
-                                                        setCouponCode(
-                                                            e.target.value
-                                                        );
+                                                    setCouponCode(
+                                                        selectedCode
+                                                    );
 
-                                                        setCouponError("");
-                                                        setCouponMessage("");
-                                                    }
+                                                    setCouponError("");
+                                                    setCouponMessage("");
+
                                                 }}
-                                                title="Select an available coupon"
                                             >
 
                                                 <option value="">
-                                                    ▼
+                                                    Select an available coupon
                                                 </option>
 
-                                                {coupons.map(
-                                                    (coupon) => (
+                                                {coupons.length > 0 ? (
 
-                                                        <option
-                                                            key={
-                                                                coupon.id ||
-                                                                coupon.code
-                                                            }
-                                                            value={
-                                                                coupon.code
-                                                            }
-                                                        >
-                                                            {
-                                                                coupon.code
-                                                            }
-                                                        </option>
+                                                    coupons.map(
+                                                        (coupon) => {
 
+                                                            const discountValue =
+                                                                coupon.discountValue ??
+                                                                coupon.discount ??
+                                                                coupon.discountPercentage;
+
+                                                            return (
+
+                                                                <option
+                                                                    key={
+                                                                        coupon.id ||
+                                                                        coupon.code
+                                                                    }
+                                                                    value={
+                                                                        coupon.code
+                                                                    }
+                                                                >
+
+                                                                    {
+                                                                        coupon.code
+                                                                    }
+
+                                                                    {
+                                                                        discountValue !== undefined &&
+                                                                        discountValue !== null
+                                                                            ? ` - ${discountValue}% OFF`
+                                                                            : ""
+                                                                    }
+
+                                                                </option>
+                                                            );
+                                                        }
                                                     )
+
+                                                ) : (
+
+                                                    <option
+                                                        value=""
+                                                        disabled
+                                                    >
+                                                        No coupons available
+                                                    </option>
+
                                                 )}
 
                                             </select>
 
-                                        )}
+                                            <span
+                                                className="coupon-dropdown-arrow"
+                                                aria-hidden="true"
+                                            >
+                                                ▾
+                                            </span>
+
+                                        </div>
 
                                         <button
                                             type="button"
@@ -1694,12 +2136,15 @@ function CustomerCheckout({
                                                 handleApplyCoupon
                                             }
                                             disabled={
-                                                couponLoading
+                                                couponLoading ||
+                                                !couponCode
                                             }
                                         >
-                                            {couponLoading
-                                                ? "Applying..."
-                                                : "Apply Coupon"}
+                                            {
+                                                couponLoading
+                                                    ? "Applying..."
+                                                    : "Apply Coupon"
+                                            }
                                         </button>
 
                                     </div>
@@ -1709,15 +2154,21 @@ function CustomerCheckout({
                                     <div className="applied-coupon">
 
                                         <span>
+
                                             ✓{" "}
                                             {
                                                 appliedCoupon.code
                                             }
+
                                             {" • "}
+
                                             Saved ₹
-                                            {Number(
-                                                appliedCoupon.discountAmount
-                                            ).toFixed(2)}
+                                            {
+                                                Number(
+                                                    appliedCoupon.discountAmount
+                                                ).toFixed(2)
+                                            }
+
                                         </span>
 
                                         <button
@@ -1731,13 +2182,18 @@ function CustomerCheckout({
                                         </button>
 
                                     </div>
+
                                 )}
 
                                 {couponMessage && (
 
                                     <p className="coupon-success">
+
                                         ✓{" "}
-                                        {couponMessage}
+                                        {
+                                            couponMessage
+                                        }
+
                                     </p>
 
                                 )}
@@ -1745,8 +2201,12 @@ function CustomerCheckout({
                                 {couponError && (
 
                                     <p className="coupon-error">
+
                                         ⚠️{" "}
-                                        {couponError}
+                                        {
+                                            couponError
+                                        }
+
                                     </p>
 
                                 )}
@@ -1763,44 +2223,59 @@ function CustomerCheckout({
 
                                 <div className="review-products">
 
-                                    {cart.map((item) => (
+                                    {cart.map(
+                                        (item) => {
 
-                                        <div
-                                            className="review-product"
-                                            key={item.id}
-                                        >
+                                            const quantity =
+                                                getCartQuantity(
+                                                    item
+                                                );
 
-                                            <span>
-                                                {item.name}
-                                                {" × "}
-                                                {
-                                                    item.cartQuantity ||
-                                                    item.quantity ||
-                                                    1
-                                                }
-                                            </span>
+                                            const itemTotal =
+                                                Number(
+                                                    item.price ?? 0
+                                                ) *
+                                                quantity;
 
-                                            <strong>
-                                                ₹
-                                                {(
-                                                    Number(
-                                                        item.price || 0
-                                                    ) *
-                                                    Number(
-                                                        item.cartQuantity ||
-                                                        item.quantity ||
-                                                        1
-                                                    )
-                                                ).toFixed(2)}
-                                            </strong>
+                                            return (
 
-                                        </div>
+                                                <div
+                                                    className="review-product"
+                                                    key={
+                                                        item.id
+                                                    }
+                                                >
 
-                                    ))}
+                                                    <span>
+                                                        {
+                                                            item.name
+                                                        }
+                                                        {" × "}
+                                                        {
+                                                            quantity
+                                                        }
+                                                    </span>
+
+                                                    <strong>
+                                                        ₹
+                                                        {
+                                                            itemTotal.toFixed(
+                                                                2
+                                                            )
+                                                        }
+                                                    </strong>
+
+                                                </div>
+                                            );
+
+                                        }
+                                    )}
 
                                 </div>
 
                             </div>
+
+                            {/* NAVIGATION */}
 
                             <div className="checkout-navigation">
 
@@ -1823,14 +2298,19 @@ function CustomerCheckout({
                                         paymentProcessing
                                     }
                                 >
-                                    {placingOrder
-                                        ? "Placing Order..."
-                                        : `Place Order • ₹${finalTotal.toFixed(2)}`}
+
+                                    {
+                                        placingOrder
+                                            ? "Placing Order..."
+                                            : `Place Order • ₹${finalTotal.toFixed(2)}`
+                                    }
+
                                 </button>
 
                             </div>
 
                         </div>
+
                     )}
 
                 </div>
@@ -1849,41 +2329,53 @@ function CustomerCheckout({
 
                         <div className="summary-items">
 
-                            {cart.map((item) => {
+                            {cart.map(
+                                (item) => {
 
-                                const quantity =
-                                    Number(
-                                        item.cartQuantity ||
-                                        item.quantity ||
-                                        1
+                                    const quantity =
+                                        getCartQuantity(
+                                            item
+                                        );
+
+                                    const itemTotal =
+                                        Number(
+                                            item.price ?? 0
+                                        ) *
+                                        quantity;
+
+                                    return (
+
+                                        <div
+                                            className="summary-item"
+                                            key={
+                                                item.id
+                                            }
+                                        >
+
+                                            <span>
+                                                {
+                                                    item.name
+                                                }
+                                                {" × "}
+                                                {
+                                                    quantity
+                                                }
+                                            </span>
+
+                                            <strong>
+                                                ₹
+                                                {
+                                                    itemTotal.toFixed(
+                                                        2
+                                                    )
+                                                }
+                                            </strong>
+
+                                        </div>
                                     );
 
-                                const itemTotal =
-                                    Number(
-                                        item.price || 0
-                                    ) * quantity;
-
-                                return (
-
-                                    <div
-                                        className="summary-item"
-                                        key={item.id}
-                                    >
-
-                                        <span>
-                                            {item.name}
-                                            {" × "}
-                                            {quantity}
-                                        </span>
-
-                                        <strong>
-                                            ₹
-                                            {itemTotal.toFixed(2)}
-                                        </strong>
-
-                                    </div>
-                                );
-                            })}
+                                }
+                            )}
 
                         </div>
 
@@ -1896,7 +2388,12 @@ function CustomerCheckout({
                             </span>
 
                             <strong>
-                                ₹{subtotal.toFixed(2)}
+                                ₹
+                                {
+                                    subtotal.toFixed(
+                                        2
+                                    )
+                                }
                             </strong>
 
                         </div>
@@ -1910,10 +2407,16 @@ function CustomerCheckout({
                                 </span>
 
                                 <strong>
-                                    -₹{discount.toFixed(2)}
+                                    -₹
+                                    {
+                                        discount.toFixed(
+                                            2
+                                        )
+                                    }
                                 </strong>
 
                             </div>
+
                         )}
 
                         <div className="summary-final-total">
@@ -1923,7 +2426,12 @@ function CustomerCheckout({
                             </span>
 
                             <strong>
-                                ₹{finalTotal.toFixed(2)}
+                                ₹
+                                {
+                                    finalTotal.toFixed(
+                                        2
+                                    )
+                                }
                             </strong>
 
                         </div>
@@ -1934,7 +2442,9 @@ function CustomerCheckout({
 
             </div>
 
-            {/* PAYMENT PROCESSING */}
+            {/* =================================================
+                PAYMENT PROCESSING
+            ================================================= */}
 
             {paymentProcessing && (
 
@@ -1957,6 +2467,7 @@ function CustomerCheckout({
                     </div>
 
                 </div>
+
             )}
 
         </div>

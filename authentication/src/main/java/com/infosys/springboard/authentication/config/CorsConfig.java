@@ -17,10 +17,18 @@ public class CorsConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        configuration.setAllowedOrigins(
+        configuration.setAllowedOriginPatterns(
                 List.of(
+                        "http://localhost:[*]",
+                        "http://127.0.0.1:[*]",
                         "http://localhost:3000",
-                        "http://localhost:5173"
+                        "http://localhost:5173",
+                        "http://localhost:80",
+                        "http://16.16.78.80",
+                        "http://16.16.78.80:[*]",
+                        "https://16.16.78.80",
+                        "https://16.16.78.80:[*]",
+                        "https://*.vercel.app"
                 )
         );
 

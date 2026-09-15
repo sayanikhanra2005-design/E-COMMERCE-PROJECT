@@ -100,6 +100,10 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-mail</artifactId>
+</dependency>
 
     </dependencies>
 
@@ -120,29 +124,17 @@
                 <version>3.15.0</version>
 
                 <configuration>
-
                     <release>21</release>
 
-                    <!-- FORCE annotation processing -->
-                    <proc>full</proc>
-
                     <annotationProcessorPaths>
-
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${lombok.version}</version>
                         </path>
-
                     </annotationProcessorPaths>
 
-                    <compilerArgs>
-                        <arg>-processor</arg>
-                        <arg>lombok.launch.AnnotationProcessorHider$AnnotationProcessor</arg>
-                    </compilerArgs>
-
                 </configuration>
-
             </plugin>
 
         </plugins>

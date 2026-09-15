@@ -1,7 +1,8 @@
 /* =========================================================
    CUSTOMER CHECKOUT
-   ========================================================= */
+========================================================= */
 
+.checkout-page,
 .checkout-container {
     width: 100%;
     min-height: 100%;
@@ -13,7 +14,7 @@
 
 /* =========================================================
    HEADER
-   ========================================================= */
+========================================================= */
 
 .checkout-header {
     display: flex;
@@ -22,16 +23,16 @@
     margin-bottom: 28px;
 }
 
-.checkout-header h1 {
-    margin: 0;
-    font-size: 30px;
-    font-weight: 700;
-    color: #222;
-}
-
 .checkout-header-content {
     flex: 1;
     min-width: 0;
+}
+
+.checkout-header h1 {
+    margin: 0;
+    color: #222;
+    font-size: 30px;
+    font-weight: 700;
 }
 
 .checkout-header-content p {
@@ -65,7 +66,7 @@
 
 /* =========================================================
    CHECKOUT STEPS
-   ========================================================= */
+========================================================= */
 
 .checkout-steps {
     width: 100%;
@@ -73,6 +74,7 @@
     margin: 0 auto 30px;
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
     position: relative;
 }
 
@@ -111,14 +113,14 @@
 .checkout-step label {
     display: block;
     margin-top: 8px;
+    color: #888;
     font-size: 13px;
     font-weight: 600;
-    color: #888;
 }
 
 .checkout-step.active span {
     background: #6c63ff;
-    color: white;
+    color: #ffffff;
 }
 
 .checkout-step.active label {
@@ -127,7 +129,7 @@
 
 /* =========================================================
    MAIN CHECKOUT LAYOUT
-   ========================================================= */
+========================================================= */
 
 .checkout-layout {
     width: 100%;
@@ -174,15 +176,15 @@
 }
 
 /* =========================================================
-   ERROR / SUCCESS
-   ========================================================= */
+   ERROR / SUCCESS / LOADING
+========================================================= */
 
 .checkout-inline-error {
     margin-bottom: 18px;
     padding: 13px 15px;
+    border: 1px solid #ffcaca;
     border-radius: 8px;
     background: #fff0f0;
-    border: 1px solid #ffcaca;
     color: #c62828;
     font-size: 14px;
     font-weight: 500;
@@ -191,9 +193,9 @@
 .checkout-success-message {
     margin: 15px 0;
     padding: 12px 15px;
+    border: 1px solid #bbf7d0;
     border-radius: 9px;
     background: #ecfdf5;
-    border: 1px solid #bbf7d0;
     color: #047857;
     font-size: 14px;
     font-weight: 600;
@@ -207,7 +209,7 @@
 
 /* =========================================================
    ADDRESS
-   ========================================================= */
+========================================================= */
 
 .checkout-address-list {
     display: flex;
@@ -219,9 +221,9 @@
     display: flex;
     gap: 14px;
     padding: 18px;
-    background: #ffffff;
     border: 1px solid #ddd;
     border-radius: 10px;
+    background: #ffffff;
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -268,12 +270,12 @@
 
 /* =========================================================
    ADD NEW ADDRESS
-   ========================================================= */
+========================================================= */
 
 .checkout-add-address-btn {
     width: 100%;
-    padding: 14px 18px;
     margin-top: 18px;
+    padding: 14px 18px;
     border: 2px dashed #6366f1;
     border-radius: 12px;
     background: #f8f9ff;
@@ -299,8 +301,9 @@
 
 .checkout-new-address-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    gap: 15px;
     margin-bottom: 18px;
 }
 
@@ -313,9 +316,9 @@
 .checkout-close-address {
     border: none;
     background: transparent;
+    color: #6b7280;
     font-size: 20px;
     cursor: pointer;
-    color: #6b7280;
 }
 
 .checkout-close-address:hover {
@@ -336,9 +339,9 @@
 }
 
 .checkout-form-group label {
+    color: #374151;
     font-size: 14px;
     font-weight: 600;
-    color: #374151;
 }
 
 .checkout-form-group input {
@@ -348,8 +351,9 @@
     border: 1px solid #d1d5db;
     border-radius: 9px;
     outline: none;
-    font-size: 14px;
     background: #ffffff;
+    color: #222;
+    font-size: 14px;
 }
 
 .checkout-form-group input:focus {
@@ -368,13 +372,13 @@
 .checkout-save-address-btn {
     padding: 11px 20px;
     border-radius: 9px;
-    cursor: pointer;
     font-weight: 600;
+    cursor: pointer;
 }
 
 .checkout-cancel-address-btn {
     border: 1px solid #d1d5db;
-    background: white;
+    background: #ffffff;
     color: #374151;
 }
 
@@ -385,13 +389,14 @@
 .checkout-save-address-btn {
     border: none;
     background: #4f46e5;
-    color: white;
+    color: #ffffff;
 }
 
 .checkout-save-address-btn:hover {
     background: #4338ca;
 }
 
+.checkout-cancel-address-btn:disabled,
 .checkout-save-address-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -399,7 +404,7 @@
 
 /* =========================================================
    PAYMENT METHODS
-   ========================================================= */
+========================================================= */
 
 .payment-methods {
     display: flex;
@@ -412,9 +417,9 @@
     align-items: flex-start;
     gap: 15px;
     padding: 18px;
-    background: #ffffff;
     border: 1px solid #ddd;
     border-radius: 10px;
+    background: #ffffff;
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -450,14 +455,14 @@
 
 /* =========================================================
    REVIEW SECTIONS
-   ========================================================= */
+========================================================= */
 
 .review-section {
     margin-bottom: 20px;
     padding: 20px;
-    background: #ffffff;
     border: 1px solid #e2e2e2;
     border-radius: 10px;
+    background: #ffffff;
 }
 
 .review-section h3 {
@@ -492,6 +497,10 @@
     text-decoration: underline;
 }
 
+.review-address strong {
+    color: #222;
+}
+
 .review-address p {
     margin: 5px 0;
     color: #666;
@@ -499,46 +508,44 @@
     line-height: 1.5;
 }
 
-.review-address strong {
-    color: #222;
-}
-
 /* =========================================================
    REVIEW PRODUCTS
-   ========================================================= */
+========================================================= */
 
 .review-products {
     display: flex;
     flex-direction: column;
+    gap: 8px;
 }
 
 .review-product {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    padding: 13px 0;
-    border-bottom: 1px solid #eeeeee;
-}
-
-.review-product:last-child {
-    border-bottom: none;
+    gap: 15px;
+    padding: 11px 13px;
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+    background: #f9fafb;
 }
 
 .review-product span {
-    color: #555;
+    min-width: 0;
+    color: #4b5563;
     font-size: 14px;
+    overflow-wrap: anywhere;
 }
 
 .review-product strong {
+    flex-shrink: 0;
     color: #222;
     font-size: 14px;
     white-space: nowrap;
 }
 
 /* =========================================================
-   PROFESSIONAL COUPON BOX
-   ========================================================= */
+   COUPON BOX
+========================================================= */
 
 .coupon-box {
     display: flex;
@@ -547,9 +554,9 @@
     width: 100%;
     padding: 6px;
     box-sizing: border-box;
-    background: #faf9ff;
     border: 1px solid #ddd9ff;
     border-radius: 10px;
+    background: #faf9ff;
     transition: all 0.2s ease;
 }
 
@@ -559,24 +566,64 @@
     background: #ffffff;
 }
 
-.coupon-box input {
+/* COUPON SELECT WRAPPER */
+
+.coupon-select-wrapper {
+    position: relative;
     flex: 1;
     min-width: 0;
+    width: 100%;
+}
+
+/* COUPON SELECT */
+
+.coupon-dropdown {
+    display: block;
+    width: 100%;
     height: 42px;
-    padding: 0 13px;
+    padding: 0 42px 0 13px;
     box-sizing: border-box;
-    border: none;
+    border: 1px solid #ddd9ff;
+    border-radius: 7px;
     outline: none;
-    background: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #ffffff;
     color: #333;
     font-size: 14px;
+    cursor: pointer;
 }
 
-.coupon-box input::placeholder {
-    color: #999;
+/* COUPON ARROW */
+
+.coupon-dropdown-arrow {
+    position: absolute;
+    top: 50%;
+    right: 13px;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #555;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    z-index: 10;
 }
 
-.coupon-box button {
+.coupon-dropdown:hover,
+.coupon-dropdown:focus {
+    border-color: #6c63ff;
+}
+
+.coupon-box > button {
     flex-shrink: 0;
     height: 42px;
     padding: 0 20px;
@@ -590,51 +637,20 @@
     transition: all 0.2s ease;
 }
 
-.coupon-box button:hover {
+.coupon-box > button:hover {
     background: #574fd6;
     transform: translateY(-1px);
 }
 
-.coupon-box button:disabled {
+.coupon-box > button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
 }
 
 /* =========================================================
-   AVAILABLE COUPON DROPDOWN
-   ========================================================= */
-
-.coupon-dropdown {
-    flex-shrink: 0;
-    width: 48px;
-    height: 42px;
-    padding: 0 7px;
-    border: 1px solid #ddd9ff;
-    border-radius: 7px;
-    background: #ffffff;
-    color: #6c63ff;
-    font-size: 14px;
-    font-weight: 700;
-    text-align: center;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.2s ease;
-}
-
-.coupon-dropdown:hover {
-    border-color: #6c63ff;
-    background: #f8f7ff;
-}
-
-.coupon-dropdown:focus {
-    border-color: #6c63ff;
-    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.08);
-}
-
-/* =========================================================
    APPLIED COUPON
-   ========================================================= */
+========================================================= */
 
 .applied-coupon {
     display: flex;
@@ -642,15 +658,16 @@
     justify-content: space-between;
     gap: 15px;
     padding: 13px 15px;
-    background: #f0fff4;
     border: 1px solid #b7e4c7;
     border-radius: 9px;
+    background: #f0fff4;
 }
 
 .applied-coupon span {
     color: #218838;
     font-size: 14px;
     font-weight: 700;
+    overflow-wrap: anywhere;
 }
 
 .remove-coupon-btn {
@@ -669,10 +686,6 @@
     background: #f2f2f2;
 }
 
-/* =========================================================
-   COUPON MESSAGES
-   ========================================================= */
-
 .coupon-success {
     margin: 10px 0 0;
     color: #218838;
@@ -687,25 +700,17 @@
     font-weight: 600;
 }
 
-.review-section small {
-    display: block;
-    margin-top: 10px;
-    color: #777;
-    font-size: 12px;
-    line-height: 1.5;
-}
-
 /* =========================================================
    ORDER SUMMARY
-   ========================================================= */
+========================================================= */
 
 .checkout-summary {
     width: 100%;
     box-sizing: border-box;
     padding: 20px;
-    background: #ffffff;
     border: 1px solid #ddd;
     border-radius: 10px;
+    background: #ffffff;
     height: fit-content;
     position: sticky;
     top: 20px;
@@ -724,14 +729,15 @@
 .summary-items {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .summary-item {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 15px;
+    gap: 12px;
+    padding: 7px 0;
 }
 
 .summary-item span {
@@ -739,9 +745,11 @@
     color: #555;
     font-size: 13px;
     line-height: 1.4;
+    overflow-wrap: anywhere;
 }
 
 .summary-item strong {
+    flex-shrink: 0;
     color: #222;
     font-size: 13px;
     white-space: nowrap;
@@ -768,10 +776,7 @@
     color: #222;
 }
 
-.discount-row {
-    color: #218838;
-}
-
+.discount-row,
 .discount-row strong {
     color: #218838;
 }
@@ -795,7 +800,7 @@
 
 /* =========================================================
    NAVIGATION
-   ========================================================= */
+========================================================= */
 
 .checkout-navigation {
     display: flex;
@@ -853,21 +858,21 @@
 
 /* =========================================================
    EMPTY CART
-   ========================================================= */
+========================================================= */
 
 .checkout-empty {
     max-width: 600px;
     margin: 80px auto;
     padding: 50px 30px;
-    text-align: center;
-    background: #ffffff;
     border-radius: 14px;
+    background: #ffffff;
+    text-align: center;
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
 }
 
 .checkout-empty-icon {
-    font-size: 45px;
     margin-bottom: 15px;
+    font-size: 45px;
 }
 
 .checkout-empty h2 {
@@ -884,7 +889,7 @@
 
 .checkout-empty .checkout-back-btn {
     background: #6c63ff;
-    color: white;
+    color: #ffffff;
 }
 
 .checkout-empty .checkout-back-btn:hover {
@@ -893,14 +898,11 @@
 
 /* =========================================================
    PAYMENT PROCESSING
-   ========================================================= */
+========================================================= */
 
 .payment-processing-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     z-index: 9999;
     display: flex;
     align-items: center;
@@ -910,13 +912,13 @@
 }
 
 .payment-processing-card {
-    width: 90%;
+    width: calc(100% - 30px);
     max-width: 380px;
     padding: 35px 25px;
     box-sizing: border-box;
-    text-align: center;
-    background: #ffffff;
     border-radius: 14px;
+    background: #ffffff;
+    text-align: center;
     box-shadow: 0 10px 35px rgba(0, 0, 0, 0.2);
 }
 
@@ -942,8 +944,8 @@
 
 .payment-money {
     position: absolute;
-    left: 50%;
     top: 50%;
+    left: 50%;
     z-index: 5;
     transform: translate(-50%, -50%);
     font-size: 42px;
@@ -957,43 +959,42 @@
 }
 
 .coin-1 {
-    left: -30px;
     top: 15px;
+    left: -30px;
     animation-delay: 0s;
 }
 
 .coin-2 {
-    left: -70px;
     top: 55px;
+    left: -70px;
     animation-delay: 0.15s;
 }
 
 .coin-3 {
-    left: -110px;
     top: 25px;
+    left: -110px;
     animation-delay: 0.3s;
 }
 
 .coin-4 {
-    left: -150px;
     top: 70px;
+    left: -150px;
     animation-delay: 0.45s;
 }
 
 .coin-5 {
-    left: -190px;
     top: 40px;
+    left: -190px;
     animation-delay: 0.6s;
 }
 
 .coin-6 {
-    left: -230px;
     top: 10px;
+    left: -230px;
     animation-delay: 0.75s;
 }
 
 @keyframes coinRun {
-
     0% {
         transform: translateX(0) rotate(0deg);
         opacity: 0;
@@ -1019,10 +1020,10 @@
 
 /* =========================================================
    TABLET
-   ========================================================= */
+========================================================= */
 
 @media (max-width: 1000px) {
-
+    .checkout-page,
     .checkout-container {
         padding: 25px;
     }
@@ -1039,30 +1040,29 @@
 
 /* =========================================================
    SMALL TABLET
-   ========================================================= */
+========================================================= */
 
 @media (max-width: 800px) {
-
     .checkout-layout {
         grid-template-columns: 1fr;
+    }
+
+    .checkout-main {
+        order: 1;
     }
 
     .checkout-summary {
         position: static;
         order: 2;
     }
-
-    .checkout-main {
-        order: 1;
-    }
 }
 
 /* =========================================================
    TABLET / MOBILE
-   ========================================================= */
+========================================================= */
 
 @media (max-width: 768px) {
-
+    .checkout-page,
     .checkout-container {
         padding: 20px;
     }
@@ -1101,10 +1101,10 @@
 
 /* =========================================================
    MOBILE
-   ========================================================= */
+========================================================= */
 
 @media (max-width: 600px) {
-
+    .checkout-page,
     .checkout-container {
         padding: 14px;
     }
@@ -1132,11 +1132,11 @@
     }
 
     .checkout-steps {
-        margin-bottom: 20px;
-        overflow-x: auto;
         justify-content: flex-start;
         gap: 25px;
+        margin-bottom: 20px;
         padding: 0 10px 5px;
+        overflow-x: auto;
         scrollbar-width: thin;
     }
 
@@ -1195,44 +1195,57 @@
     }
 
     .review-product {
+        align-items: flex-start;
         gap: 10px;
+        padding: 10px;
     }
 
-    /* =====================================================
-       COUPON - MOBILE
-       ===================================================== */
+    .review-product span,
+    .review-product strong {
+        font-size: 13px;
+    }
+
+    /* COUPON */
 
     .coupon-box {
-        padding: 5px;
+        align-items: stretch;
         flex-direction: row;
+        gap: 7px;
+        padding: 5px;
     }
 
-    .coupon-box input {
+    .coupon-select-wrapper {
         min-width: 0;
-        height: 40px;
+        width: 100%;
     }
 
     .coupon-dropdown {
-        width: 44px;
+        width: 100%;
         height: 40px;
-        padding: 0 5px;
-        font-size: 13px;
+        padding: 0 38px 0 8px;
+        font-size: 12px;
     }
 
-    .coupon-box button {
+    .coupon-dropdown-arrow {
+        right: 11px;
+        width: 16px;
+        height: 16px;
+        font-size: 14px;
+        line-height: 16px;
+    }
+
+    .coupon-box > button {
         height: 40px;
-        padding: 0 14px;
-        font-size: 13px;
+        padding: 0 12px;
+        font-size: 12px;
     }
 
     .applied-coupon {
-        flex-direction: column;
         align-items: flex-start;
+        flex-direction: column;
     }
 
-    /* =====================================================
-       ADDRESS FORM
-       ===================================================== */
+    /* ADDRESS FORM */
 
     .checkout-form-row {
         grid-template-columns: 1fr;
@@ -1248,9 +1261,7 @@
         width: 100%;
     }
 
-    /* =====================================================
-       SUMMARY
-       ===================================================== */
+    /* SUMMARY */
 
     .checkout-summary {
         padding: 16px;
@@ -1264,9 +1275,7 @@
         font-size: 16px;
     }
 
-    /* =====================================================
-       NAVIGATION
-       ===================================================== */
+    /* NAVIGATION */
 
     .checkout-navigation {
         flex-direction: column-reverse;
@@ -1279,27 +1288,24 @@
         width: 100%;
     }
 
-    /* =====================================================
-       PROCESSING
-       ===================================================== */
-
-    .payment-processing-card {
-        width: calc(100% - 30px);
-        padding: 30px 20px;
-    }
+    /* EMPTY CART */
 
     .checkout-empty {
         margin: 40px auto;
         padding: 35px 20px;
     }
+
+    .payment-processing-card {
+        padding: 30px 20px;
+    }
 }
 
 /* =========================================================
    VERY SMALL MOBILE
-   ========================================================= */
+========================================================= */
 
 @media (max-width: 400px) {
-
+    .checkout-page,
     .checkout-container {
         padding: 10px;
     }
@@ -1334,24 +1340,29 @@
         overflow-wrap: anywhere;
     }
 
-    /* =====================================================
-       COUPON - VERY SMALL MOBILE
-       ===================================================== */
-
     .coupon-box {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .coupon-box input,
-    .coupon-box button,
-    .coupon-dropdown {
+    .coupon-select-wrapper,
+    .coupon-dropdown,
+    .coupon-box > button {
         width: 100%;
     }
 
     .coupon-dropdown {
         height: 40px;
-        text-align: center;
+        text-align: left;
+        padding-right: 40px;
+    }
+
+    .coupon-dropdown-arrow {
+        right: 14px;
+        width: 18px;
+        height: 18px;
+        font-size: 15px;
+        line-height: 18px;
     }
 
     .checkout-summary {
@@ -1361,4 +1372,70 @@
     .checkout-empty {
         padding: 30px 16px;
     }
+    /* =========================================================
+   COUPON BOX - FORCE VISIBLE
+========================================================= */
+
+.review-section .coupon-box {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: 100% !important;
+    min-height: 54px !important;
+    padding: 6px !important;
+    box-sizing: border-box !important;
+    border: 1px solid #ddd9ff !important;
+    border-radius: 10px !important;
+    background: #faf9ff !important;
+}
+
+.review-section .coupon-select-wrapper {
+    position: relative !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+.review-section .coupon-dropdown {
+    display: block !important;
+    width: 100% !important;
+    height: 42px !important;
+    padding: 0 42px 0 13px !important;
+    box-sizing: border-box !important;
+    border: 1px solid #ddd9ff !important;
+    border-radius: 7px !important;
+    outline: none !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background: #ffffff !important;
+    color: #333 !important;
+    font-size: 14px !important;
+}
+
+.review-section .coupon-dropdown-arrow {
+    position: absolute !important;
+    top: 50% !important;
+    right: 13px !important;
+    width: 8px !important;
+    height: 8px !important;
+    border-right: 2px solid #555 !important;
+    border-bottom: 2px solid #555 !important;
+    transform: translateY(-65%) rotate(45deg) !important;
+    pointer-events: none !important;
+    z-index: 10 !important;
+}
+
+.review-section .coupon-box > button {
+    flex-shrink: 0 !important;
+    height: 42px !important;
+    padding: 0 20px !important;
+    border: none !important;
+    border-radius: 7px !important;
+    background: #6c63ff !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+}
 }

@@ -16,35 +16,32 @@ import com.infosys.springboard.authentication.service.ProductService;
 
 @RestController
 @RequestMapping("/admin/products")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasRole('ADMINISTRATOR')")
 public class AdminProductController {
 
+    private final ProductService productService;
 
-private final ProductService productService;
+    public AdminProductController(ProductService productService) {
+        this.productService = productService;
+    }
 
-public AdminProductController(ProductService productService) {
-    this.productService = productService;
-}
+    @GetMapping
+    public ResponseEntity<List<ProductResponse>> getAllProducts() {
 
-@GetMapping
-public ResponseEntity<List<ProductResponse>> getAllProducts() {
+        List<ProductResponse> products =
+                productService.getAllProducts();
 
-    List<ProductResponse> products =
-            productService.getAllProducts();
+        return ResponseEntity.ok(products);
+    }
 
-    return ResponseEntity.ok(products);
-}
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteProduct(
+            @PathVariable Long id) {
 
-@DeleteMapping("/{id}")
-public ResponseEntity<String> deleteProduct(
-        @PathVariable Long id) {
+        productService.deleteProductByAdmin(id);
 
-    productService.deleteProductByAdmin(id);
-
-    return ResponseEntity
-            .status(HttpStatus.OK)
-            .body("Product deleted successfully");
-}
-
-
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body("Product deleted successfully");
+    }
 }

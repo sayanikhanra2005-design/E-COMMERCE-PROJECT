@@ -37,6 +37,7 @@ public class OrderService {
     private final InventoryRepository inventoryRepository;
     private final CouponRepository couponRepository;
     private final CommissionService commissionService;
+    private final EmailService emailService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -47,7 +48,8 @@ public class OrderService {
             ProductRepository productRepository,
             InventoryRepository inventoryRepository,
             CouponRepository couponRepository,
-            CommissionService commissionService) {
+            CommissionService commissionService,
+            EmailService emailService) {
 
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -55,6 +57,7 @@ public class OrderService {
         this.inventoryRepository = inventoryRepository;
         this.couponRepository = couponRepository;
         this.commissionService = commissionService;
+        this.emailService = emailService;
     }
 
     // =========================================================
@@ -464,13 +467,11 @@ public class OrderService {
 
                 int newQuantity =
                         currentQuantity
-                                - itemRequest
-                                .getQuantity();
+                                - itemRequest.getQuantity();
 
                 int newReserved =
                         currentReserved
-                                + itemRequest
-                                .getQuantity();
+                                + itemRequest.getQuantity();
 
                 if (newQuantity < 0) {
                     newQuantity = 0;
@@ -509,13 +510,24 @@ public class OrderService {
         }
 
         // =====================================================
+        // SEND ORDER PLACED EMAIL
+        // =====================================================
+
+        List<OrderItem> savedOrderItems =
+                orderItemRepository.findByOrderId(
+                        savedOrder.getId());
+
+        emailService.sendOrderPlacedEmail(
+                savedOrder,
+                savedOrderItems);
+
+        // =====================================================
         // RETURN ORDER RESPONSE
         // =====================================================
 
         return convertToResponse(
                 savedOrder,
-                orderItemRepository.findByOrderId(
-                        savedOrder.getId()));
+                savedOrderItems);
     }
 
     // =========================================================
@@ -674,9 +686,8 @@ public class OrderService {
             }
 
             List<OrderItem> allItems =
-                    orderItemRepository
-                            .findByOrderId(
-                                    order.getId());
+                    orderItemRepository.findByOrderId(
+                            order.getId());
 
             List<OrderItem> filteredItems =
                     new ArrayList<>();

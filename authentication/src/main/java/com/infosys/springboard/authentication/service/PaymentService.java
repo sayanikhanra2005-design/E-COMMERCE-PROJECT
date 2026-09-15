@@ -6,19 +6,31 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.infosys.springboard.authentication.dto.PaymentRequest;
 import com.infosys.springboard.authentication.dto.PaymentResponse;
+import com.infosys.springboard.authentication.entity.Order;
 import com.infosys.springboard.authentication.entity.Payment;
+import com.infosys.springboard.authentication.repository.OrderRepository;
 import com.infosys.springboard.authentication.repository.PaymentRepository;
 
 @Service
+@Transactional
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
+    private final OrderRepository orderRepository;
+    private final EmailService emailService;
 
-    public PaymentService(PaymentRepository paymentRepository) {
+    public PaymentService(
+            PaymentRepository paymentRepository,
+            OrderRepository orderRepository,
+            EmailService emailService) {
+
         this.paymentRepository = paymentRepository;
+        this.orderRepository = orderRepository;
+        this.emailService = emailService;
     }
 
     // =========================================================
@@ -29,40 +41,74 @@ public class PaymentService {
             PaymentRequest request,
             String customerEmail) {
 
-        // Validate order ID
+        // =====================================================
+        // VALIDATE ORDER ID
+        // =====================================================
+
         if (request.getOrderId() == null) {
+
             throw new RuntimeException(
-                    "Order ID is required"
-            );
+                    "Order ID is required");
         }
 
-        // Validate customer email
+        // =====================================================
+        // VALIDATE CUSTOMER EMAIL
+        // =====================================================
+
         if (customerEmail == null
                 || customerEmail.trim().isEmpty()) {
 
             throw new RuntimeException(
-                    "Customer email is required"
-            );
+                    "Customer email is required");
         }
 
-        // Validate amount
+        // =====================================================
+        // FIND ORDER
+        // =====================================================
+
+        Order order =
+                orderRepository.findById(
+                        request.getOrderId())
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Order not found: "
+                                                + request.getOrderId()));
+
+        // =====================================================
+        // VERIFY ORDER BELONGS TO CUSTOMER
+        // =====================================================
+
+        if (order.getCustomerEmail() == null
+                || !order.getCustomerEmail()
+                        .equalsIgnoreCase(
+                                customerEmail)) {
+
+            throw new RuntimeException(
+                    "You are not authorized to make payment for this order");
+        }
+
+        // =====================================================
+        // VALIDATE AMOUNT
+        // =====================================================
+
         if (request.getAmount() == null
                 || request.getAmount()
                         .compareTo(BigDecimal.ZERO) <= 0) {
 
             throw new RuntimeException(
-                    "Invalid payment amount"
-            );
+                    "Invalid payment amount");
         }
 
-        // Validate payment method
+        // =====================================================
+        // VALIDATE PAYMENT METHOD
+        // =====================================================
+
         if (request.getPaymentMethod() == null
                 || request.getPaymentMethod()
                         .trim().isEmpty()) {
 
             throw new RuntimeException(
-                    "Payment method is required"
-            );
+                    "Payment method is required");
         }
 
         String paymentMethod =
@@ -70,14 +116,12 @@ public class PaymentService {
                         .trim()
                         .toUpperCase();
 
-        // Allow only supported payment methods
         if (!paymentMethod.equals("CARD")
                 && !paymentMethod.equals("UPI")
                 && !paymentMethod.equals("COD")) {
 
             throw new RuntimeException(
-                    "Invalid payment method. Use CARD, UPI or COD"
-            );
+                    "Invalid payment method. Use CARD, UPI or COD");
         }
 
         // =====================================================
@@ -85,12 +129,12 @@ public class PaymentService {
         // =====================================================
 
         if (paymentRepository
-                .findByOrderId(request.getOrderId())
+                .findByOrderId(
+                        request.getOrderId())
                 .isPresent()) {
 
             throw new RuntimeException(
-                    "Payment already exists for this order"
-            );
+                    "Payment already exists for this order");
         }
 
         // =====================================================
@@ -101,7 +145,7 @@ public class PaymentService {
 
         if (paymentMethod.equals("COD")) {
 
-            // Cash on Delivery remains pending
+            // COD payment is pending until delivery
             paymentStatus = "PENDING";
 
         } else {
@@ -118,23 +162,31 @@ public class PaymentService {
         String transactionId =
                 "TXN-"
                         + UUID.randomUUID()
-                                .toString()
-                                .substring(0, 8)
-                                .toUpperCase();
+                        .toString()
+                        .substring(0, 8)
+                        .toUpperCase();
 
         // =====================================================
         // CREATE PAYMENT
         // =====================================================
 
-        Payment payment = Payment.builder()
-                .orderId(request.getOrderId())
-                .customerEmail(customerEmail.trim())
-                .amount(request.getAmount())
-                .paymentMethod(paymentMethod)
-                .paymentStatus(paymentStatus)
-                .transactionId(transactionId)
-                .paymentDate(LocalDateTime.now())
-                .build();
+        Payment payment =
+                Payment.builder()
+                        .orderId(
+                                request.getOrderId())
+                        .customerEmail(
+                                customerEmail.trim())
+                        .amount(
+                                request.getAmount())
+                        .paymentMethod(
+                                paymentMethod)
+                        .paymentStatus(
+                                paymentStatus)
+                        .transactionId(
+                                transactionId)
+                        .paymentDate(
+                                LocalDateTime.now())
+                        .build();
 
         // =====================================================
         // SAVE PAYMENT
@@ -143,7 +195,43 @@ public class PaymentService {
         Payment savedPayment =
                 paymentRepository.save(payment);
 
-        return convertToResponse(savedPayment);
+        // =====================================================
+        // UPDATE ORDER PAYMENT STATUS
+        // =====================================================
+
+        order.setPaymentStatus(
+                paymentStatus);
+
+        order.setPaymentMethod(
+                paymentMethod);
+
+        orderRepository.save(order);
+
+        // =====================================================
+        // SEND PAYMENT EMAIL
+        // =====================================================
+
+        if ("SUCCESS".equalsIgnoreCase(
+                paymentStatus)) {
+
+            emailService.sendPaymentSuccessEmail(
+                    order,
+                    transactionId);
+
+        } else if ("FAILED".equalsIgnoreCase(
+                paymentStatus)) {
+
+            emailService.sendPaymentFailedEmail(
+                    order,
+                    transactionId);
+        }
+
+        // =====================================================
+        // RETURN RESPONSE
+        // =====================================================
+
+        return convertToResponse(
+                savedPayment);
     }
 
     // =========================================================
@@ -155,9 +243,9 @@ public class PaymentService {
             String customerEmail) {
 
         if (orderId == null) {
+
             throw new RuntimeException(
-                    "Order ID is required"
-            );
+                    "Order ID is required");
         }
 
         Payment payment =
@@ -165,22 +253,24 @@ public class PaymentService {
                         .findByOrderId(orderId)
                         .orElseThrow(() ->
                                 new RuntimeException(
-                                        "Payment not found for this order"
-                                )
-                        );
+                                        "Payment not found for this order"));
 
-        // Make sure the customer owns the payment
+        // =====================================================
+        // VERIFY CUSTOMER
+        // =====================================================
+
         if (customerEmail == null
                 || payment.getCustomerEmail() == null
                 || !payment.getCustomerEmail()
-                        .equalsIgnoreCase(customerEmail)) {
+                        .equalsIgnoreCase(
+                                customerEmail)) {
 
             throw new RuntimeException(
-                    "You are not authorized to view this payment"
-            );
+                    "You are not authorized to view this payment");
         }
 
-        return convertToResponse(payment);
+        return convertToResponse(
+                payment);
     }
 
     // =========================================================
@@ -194,12 +284,12 @@ public class PaymentService {
                 || customerEmail.trim().isEmpty()) {
 
             throw new RuntimeException(
-                    "Customer email is required"
-            );
+                    "Customer email is required");
         }
 
         return paymentRepository
-                .findByCustomerEmail(customerEmail)
+                .findByCustomerEmail(
+                        customerEmail)
                 .stream()
                 .map(this::convertToResponse)
                 .toList();

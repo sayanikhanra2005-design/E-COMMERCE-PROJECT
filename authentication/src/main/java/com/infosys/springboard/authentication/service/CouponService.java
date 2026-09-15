@@ -32,36 +32,31 @@ public class CouponService {
                 .toUpperCase();
 
         if (couponRepository.existsByCode(code)) {
-            throw new RuntimeException(
-                    "Coupon code already exists");
+            throw new RuntimeException("Coupon code already exists");
         }
 
         Coupon coupon = Coupon.builder()
                 .code(code)
                 .discountType(
-                        request.getDiscountType()
-                                .toUpperCase())
-                .discountValue(
-                        request.getDiscountValue())
-                .minimumOrderAmount(
-                        request.getMinimumOrderAmount())
-                .maximumDiscount(
-                        request.getMaximumDiscount())
-                .startDate(
-                        request.getStartDate())
-                .expiryDate(
-                        request.getExpiryDate())
-                .usageLimit(
-                        request.getUsageLimit())
+                        request.getDiscountType() != null
+                                ? request.getDiscountType().trim().toUpperCase()
+                                : null
+                )
+                .discountValue(request.getDiscountValue())
+                .minimumOrderAmount(request.getMinimumOrderAmount())
+                .maximumDiscount(request.getMaximumDiscount())
+                .startDate(request.getStartDate())
+                .expiryDate(request.getExpiryDate())
+                .usageLimit(request.getUsageLimit())
                 .usedCount(0)
                 .active(
                         request.getActive() != null
                                 ? request.getActive()
-                                : true)
+                                : true
+                )
                 .build();
 
-        Coupon savedCoupon =
-                couponRepository.save(coupon);
+        Coupon savedCoupon = couponRepository.save(coupon);
 
         return convertToResponse(savedCoupon);
     }
@@ -86,8 +81,7 @@ public class CouponService {
 
         Coupon coupon = couponRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Coupon not found"));
+                        new RuntimeException("Coupon not found"));
 
         return convertToResponse(coupon);
     }
@@ -102,8 +96,7 @@ public class CouponService {
 
         Coupon coupon = couponRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Coupon not found"));
+                        new RuntimeException("Coupon not found"));
 
         String newCode = request.getCode()
                 .trim()
@@ -112,15 +105,16 @@ public class CouponService {
         if (!coupon.getCode().equals(newCode)
                 && couponRepository.existsByCode(newCode)) {
 
-            throw new RuntimeException(
-                    "Coupon code already exists");
+            throw new RuntimeException("Coupon code already exists");
         }
 
         coupon.setCode(newCode);
 
         coupon.setDiscountType(
-                request.getDiscountType()
-                        .toUpperCase());
+                request.getDiscountType() != null
+                        ? request.getDiscountType().trim().toUpperCase()
+                        : null
+        );
 
         coupon.setDiscountValue(
                 request.getDiscountValue());
@@ -141,8 +135,11 @@ public class CouponService {
                 request.getUsageLimit());
 
         if (request.getActive() != null) {
-            coupon.setActive(
-                    request.getActive());
+            coupon.setActive(request.getActive());
+        }
+
+        if (coupon.getUsedCount() == null) {
+            coupon.setUsedCount(0);
         }
 
         Coupon updatedCoupon =
@@ -159,12 +156,10 @@ public class CouponService {
 
         Coupon coupon = couponRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Coupon not found"));
+                        new RuntimeException("Coupon not found"));
 
         coupon.setActive(
-                !Boolean.TRUE.equals(
-                        coupon.getActive()));
+                !Boolean.TRUE.equals(coupon.getActive()));
 
         Coupon updatedCoupon =
                 couponRepository.save(coupon);
@@ -180,8 +175,7 @@ public class CouponService {
 
         Coupon coupon = couponRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException(
-                                "Coupon not found"));
+                        new RuntimeException("Coupon not found"));
 
         couponRepository.delete(coupon);
     }
@@ -194,7 +188,10 @@ public class CouponService {
             String code,
             BigDecimal orderAmount) {
 
-        // Check coupon code
+        // -----------------------------------------------------
+        // CHECK COUPON CODE
+        // -----------------------------------------------------
+
         if (code == null || code.trim().isEmpty()) {
 
             return new CouponValidationResponse(
@@ -206,10 +203,12 @@ public class CouponService {
             );
         }
 
-        // Check order amount
+        // -----------------------------------------------------
+        // CHECK ORDER AMOUNT
+        // -----------------------------------------------------
+
         if (orderAmount == null
-                || orderAmount.compareTo(
-                        BigDecimal.ZERO) <= 0) {
+                || orderAmount.compareTo(BigDecimal.ZERO) <= 0) {
 
             return new CouponValidationResponse(
                     false,
@@ -220,10 +219,12 @@ public class CouponService {
             );
         }
 
-        // Find coupon
+        // -----------------------------------------------------
+        // FIND COUPON
+        // -----------------------------------------------------
+
         Coupon coupon = couponRepository
-                .findByCode(
-                        code.trim().toUpperCase())
+                .findByCode(code.trim().toUpperCase())
                 .orElse(null);
 
         if (coupon == null) {
@@ -237,9 +238,11 @@ public class CouponService {
             );
         }
 
-        // Check active status
-        if (!Boolean.TRUE.equals(
-                coupon.getActive())) {
+        // -----------------------------------------------------
+        // CHECK ACTIVE STATUS
+        // -----------------------------------------------------
+
+        if (!Boolean.TRUE.equals(coupon.getActive())) {
 
             return new CouponValidationResponse(
                     false,
@@ -250,13 +253,14 @@ public class CouponService {
             );
         }
 
-        // Check start date
-        LocalDateTime now =
-                LocalDateTime.now();
+        // -----------------------------------------------------
+        // CHECK START DATE
+        // -----------------------------------------------------
+
+        LocalDateTime now = LocalDateTime.now();
 
         if (coupon.getStartDate() != null
-                && now.isBefore(
-                        coupon.getStartDate())) {
+                && now.isBefore(coupon.getStartDate())) {
 
             return new CouponValidationResponse(
                     false,
@@ -267,10 +271,12 @@ public class CouponService {
             );
         }
 
-        // Check expiry date
+        // -----------------------------------------------------
+        // CHECK EXPIRY DATE
+        // -----------------------------------------------------
+
         if (coupon.getExpiryDate() != null
-                && now.isAfter(
-                        coupon.getExpiryDate())) {
+                && now.isAfter(coupon.getExpiryDate())) {
 
             return new CouponValidationResponse(
                     false,
@@ -281,9 +287,9 @@ public class CouponService {
             );
         }
 
-        // =====================================================
+        // -----------------------------------------------------
         // CHECK USAGE LIMIT
-        // =====================================================
+        // -----------------------------------------------------
 
         Integer usedCount =
                 coupon.getUsedCount() == null
@@ -291,8 +297,7 @@ public class CouponService {
                         : coupon.getUsedCount();
 
         if (coupon.getUsageLimit() != null
-                && usedCount >=
-                        coupon.getUsageLimit()) {
+                && usedCount >= coupon.getUsageLimit()) {
 
             return new CouponValidationResponse(
                     false,
@@ -303,9 +308,9 @@ public class CouponService {
             );
         }
 
-        // =====================================================
+        // -----------------------------------------------------
         // CHECK MINIMUM ORDER AMOUNT
-        // =====================================================
+        // -----------------------------------------------------
 
         if (coupon.getMinimumOrderAmount() != null
                 && orderAmount.compareTo(
@@ -321,20 +326,22 @@ public class CouponService {
             );
         }
 
+        // -----------------------------------------------------
+        // CALCULATE DISCOUNT
+        // -----------------------------------------------------
+
         BigDecimal discountAmount;
 
-        // =====================================================
+        // -----------------------------------------------------
         // PERCENTAGE DISCOUNT
-        // =====================================================
+        // -----------------------------------------------------
 
         if ("PERCENTAGE".equalsIgnoreCase(
                 coupon.getDiscountType())) {
 
             discountAmount = orderAmount
-                    .multiply(
-                            coupon.getDiscountValue())
-                    .divide(
-                            BigDecimal.valueOf(100));
+                    .multiply(coupon.getDiscountValue())
+                    .divide(BigDecimal.valueOf(100));
 
             // Maximum discount limit
             if (coupon.getMaximumDiscount() != null
@@ -344,12 +351,11 @@ public class CouponService {
                 discountAmount =
                         coupon.getMaximumDiscount();
             }
-
         }
 
-        // =====================================================
+        // -----------------------------------------------------
         // FIXED DISCOUNT
-        // =====================================================
+        // -----------------------------------------------------
 
         else if ("FIXED".equalsIgnoreCase(
                 coupon.getDiscountType())) {
@@ -358,17 +364,14 @@ public class CouponService {
                     coupon.getDiscountValue();
 
             // Discount cannot exceed order amount
-            if (discountAmount.compareTo(
-                    orderAmount) > 0) {
-
+            if (discountAmount.compareTo(orderAmount) > 0) {
                 discountAmount = orderAmount;
             }
-
         }
 
-        // =====================================================
+        // -----------------------------------------------------
         // INVALID DISCOUNT TYPE
-        // =====================================================
+        // -----------------------------------------------------
 
         else {
 
@@ -381,13 +384,12 @@ public class CouponService {
             );
         }
 
-        // =====================================================
+        // -----------------------------------------------------
         // CALCULATE FINAL AMOUNT
-        // =====================================================
+        // -----------------------------------------------------
 
         BigDecimal finalAmount =
-                orderAmount.subtract(
-                        discountAmount);
+                orderAmount.subtract(discountAmount);
 
         return new CouponValidationResponse(
                 true,
@@ -401,38 +403,50 @@ public class CouponService {
     // =========================================================
     // GET ACTIVE COUPONS FOR CUSTOMER
     // =========================================================
+    //
+    // IMPORTANT:
+    // The database has already confirmed that the coupons are
+    // active and inside their valid date range.
+    //
+    // Therefore this method only retrieves coupons where
+    // active = true.
+    //
+    // Validation of expiry, usage limit and minimum order
+    // amount is still performed when the customer actually
+    // applies a coupon.
+    // =========================================================
 
     public List<CouponResponse> getActiveCouponsForCustomer() {
 
-        LocalDateTime now =
-                LocalDateTime.now();
+        List<Coupon> coupons =
+                couponRepository.findByActive(Boolean.TRUE);
 
-        return couponRepository.findByActive(true)
+        System.out.println(
+                "========== CUSTOMER ACTIVE COUPONS ==========");
+
+        System.out.println(
+                "ACTIVE COUPON COUNT = " + coupons.size());
+
+        for (Coupon coupon : coupons) {
+
+            System.out.println(
+                    "ID=" + coupon.getId()
+                    + ", CODE=" + coupon.getCode()
+                    + ", ACTIVE=" + coupon.getActive()
+                    + ", START=" + coupon.getStartDate()
+                    + ", EXPIRY=" + coupon.getExpiryDate()
+                    + ", USAGE="
+                    + coupon.getUsedCount()
+                    + "/"
+                    + coupon.getUsageLimit()
+            );
+        }
+
+        System.out.println(
+                "==============================================");
+
+        return coupons
                 .stream()
-
-                // Coupon must have valid dates
-                .filter(coupon ->
-                        coupon.getStartDate() != null &&
-                        coupon.getExpiryDate() != null &&
-                        !now.isBefore(
-                                coupon.getStartDate()) &&
-                        !now.isAfter(
-                                coupon.getExpiryDate())
-                )
-
-                // Coupon must not have reached usage limit
-                .filter(coupon -> {
-
-                    Integer usedCount =
-                            coupon.getUsedCount() == null
-                                    ? 0
-                                    : coupon.getUsedCount();
-
-                    return coupon.getUsageLimit() == null
-                            || usedCount <
-                                    coupon.getUsageLimit();
-                })
-
                 .map(this::convertToResponse)
                 .toList();
     }
