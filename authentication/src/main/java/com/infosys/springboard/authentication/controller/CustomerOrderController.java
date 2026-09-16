@@ -1,10 +1,12 @@
 package com.infosys.springboard.authentication.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -143,5 +145,23 @@ public class CustomerOrderController {
                 );
 
         return ResponseEntity.ok(response);
+    }
+
+    // =========================================================
+    // ORDER ERROR HANDLER
+    // =========================================================
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, String>> handleRuntimeException(
+            RuntimeException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(
+                        "message",
+                        ex.getMessage() != null
+                                ? ex.getMessage()
+                                : "Order could not be created"
+                ));
     }
 }
