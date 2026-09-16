@@ -2,6 +2,7 @@ package com.infosys.springboard.authentication.dto;
 
 import java.math.BigDecimal;
 
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -46,7 +47,36 @@ public class ProductRequest {
 
 
     // ==========================================
+    // ORIGINAL PRODUCT PRICE
+    // ==========================================
+
+    @NotNull(message = "Original product price is required")
+    @DecimalMin(
+            value = "0.01",
+            message = "Original product price must be greater than 0"
+    )
+    private BigDecimal originalPrice;
+
+
+    // ==========================================
+    // DISCOUNT PERCENTAGE
+    // ==========================================
+
+    @NotNull(message = "Discount percentage is required")
+    @DecimalMin(
+            value = "0",
+            message = "Discount percentage cannot be negative"
+    )
+    @DecimalMax(
+            value = "100",
+            message = "Discount percentage cannot be greater than 100"
+    )
+    private BigDecimal discountPercentage;
+
+
+    // ==========================================
     // PRODUCT PRICE
+    // Final price after discount
     // ==========================================
 
     @NotNull(message = "Product price is required")

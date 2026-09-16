@@ -68,20 +68,9 @@ public class OrderService {
             OrderRequest request,
             String customerEmail) {
 
-        if (request == null
-                || request.getItems() == null
-                || request.getItems().isEmpty()) {
-
-            throw new RuntimeException(
-                    "Order must contain at least one product");
-        }
-
-        // =====================================================
-        // VALIDATE ADDRESS
-        // =====================================================
+        validateOrderRequest(request);
 
         if (request.getAddressId() == null) {
-
             throw new RuntimeException(
                     "Delivery address is required");
         }
@@ -102,50 +91,32 @@ public class OrderService {
                 .orElse(null);
 
         if (address == null) {
-
             throw new RuntimeException(
                     "Invalid delivery address");
         }
 
-        // =====================================================
-        // VALIDATE PAYMENT METHOD
-        // =====================================================
-
-        if (request.getPaymentMethod() == null
-                || request.getPaymentMethod()
-                .trim()
-                .isEmpty()) {
-
-            throw new RuntimeException(
-                    "Payment method is required");
-        }
-
         String paymentMethod =
-                request.getPaymentMethod()
-                        .trim()
-                        .toUpperCase();
-
-        if (!paymentMethod.equals("COD")
-                && !paymentMethod.equals("CARD")
-                && !paymentMethod.equals("UPI")) {
-
-            throw new RuntimeException(
-                    "Invalid payment method. "
-                            + "Allowed methods: COD, CARD, UPI");
-        }
+                validatePaymentMethod(
+                        request.getPaymentMethod());
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
         List<Product> products = new ArrayList<>();
 
-        Coupon appliedCoupon = null;
-
-        // =====================================================
-        // CHECK PRODUCTS AND STOCK
-        // =====================================================
-
         for (OrderItemRequest itemRequest :
                 request.getItems()) {
+
+            if (itemRequest.getProductId() == null) {
+                throw new RuntimeException(
+                        "Product ID is required");
+            }
+
+            if (itemRequest.getQuantity() == null
+                    || itemRequest.getQuantity() <= 0) {
+
+                throw new RuntimeException(
+                        "Quantity must be greater than zero");
+            }
 
             Product product =
                     productRepository
@@ -156,13 +127,6 @@ public class OrderService {
                                             "Product not found: "
                                                     + itemRequest
                                                     .getProductId()));
-
-            if (itemRequest.getQuantity() == null
-                    || itemRequest.getQuantity() <= 0) {
-
-                throw new RuntimeException(
-                        "Quantity must be greater than zero");
-            }
 
             if (product.getQuantity() == null
                     || product.getQuantity()
@@ -207,6 +171,8 @@ public class OrderService {
 
         BigDecimal discount = BigDecimal.ZERO;
 
+        Coupon appliedCoupon = null;
+
         String couponCode =
                 request.getCouponCode();
 
@@ -217,126 +183,15 @@ public class OrderService {
                     couponCode.trim().toUpperCase();
 
             appliedCoupon =
-                    couponRepository
-                            .findByCode(couponCode)
-                            .orElseThrow(() ->
-                                    new RuntimeException(
-                                            "Invalid coupon code"));
+                    validateCoupon(
+                            couponCode,
+                            subtotal);
 
-            LocalDateTime now =
-                    LocalDateTime.now();
-
-            if (!Boolean.TRUE.equals(
-                    appliedCoupon.getActive())) {
-
-                throw new RuntimeException(
-                        "Coupon is inactive");
-            }
-
-            if (appliedCoupon.getStartDate() != null
-                    && now.isBefore(
-                            appliedCoupon.getStartDate())) {
-
-                throw new RuntimeException(
-                        "Coupon is not active yet");
-            }
-
-            if (appliedCoupon.getExpiryDate() != null
-                    && now.isAfter(
-                            appliedCoupon.getExpiryDate())) {
-
-                throw new RuntimeException(
-                        "Coupon has expired");
-            }
-
-            int usedCount =
-                    appliedCoupon.getUsedCount() == null
-                            ? 0
-                            : appliedCoupon.getUsedCount();
-
-            if (appliedCoupon.getUsageLimit() != null
-                    && usedCount
-                    >= appliedCoupon.getUsageLimit()) {
-
-                throw new RuntimeException(
-                        "Coupon usage limit reached");
-            }
-
-            if (appliedCoupon
-                    .getMinimumOrderAmount() != null
-                    && subtotal.compareTo(
-                            appliedCoupon
-                                    .getMinimumOrderAmount()) < 0) {
-
-                throw new RuntimeException(
-                        "Minimum order amount for this coupon is "
-                                + appliedCoupon
-                                .getMinimumOrderAmount());
-            }
-
-            if (appliedCoupon.getDiscountValue() == null
-                    || appliedCoupon
-                    .getDiscountValue()
-                    .compareTo(BigDecimal.ZERO) <= 0) {
-
-                throw new RuntimeException(
-                        "Invalid coupon discount");
-            }
-
-            String discountType =
-                    appliedCoupon.getDiscountType() == null
-                            ? ""
-                            : appliedCoupon
-                            .getDiscountType()
-                            .trim()
-                            .toUpperCase();
-
-            if ("PERCENTAGE".equals(discountType)
-                    || "PERCENT".equals(discountType)) {
-
-                discount =
-                        subtotal
-                                .multiply(
-                                        appliedCoupon
-                                                .getDiscountValue())
-                                .divide(
-                                        BigDecimal.valueOf(100));
-            }
-
-            else if ("FIXED".equals(discountType)
-                    || "FLAT".equals(discountType)
-                    || "AMOUNT".equals(discountType)) {
-
-                discount =
-                        appliedCoupon.getDiscountValue();
-            }
-
-            else {
-
-                throw new RuntimeException(
-                        "Invalid coupon discount type");
-            }
-
-            if (appliedCoupon
-                    .getMaximumDiscount() != null
-                    && discount.compareTo(
-                            appliedCoupon
-                                    .getMaximumDiscount()) > 0) {
-
-                discount =
-                        appliedCoupon
-                                .getMaximumDiscount();
-            }
-
-            if (discount.compareTo(subtotal) > 0) {
-
-                discount = subtotal;
-            }
+            discount =
+                    calculateDiscount(
+                            appliedCoupon,
+                            subtotal);
         }
-
-        // =====================================================
-        // FINAL TOTAL
-        // =====================================================
 
         BigDecimal totalAmount =
                 subtotal.subtract(discount);
@@ -348,7 +203,7 @@ public class OrderService {
         }
 
         // =====================================================
-        // CREATE ORDER
+        // CREATE SHOPSTACK ORDER
         // =====================================================
 
         Order order =
@@ -360,6 +215,8 @@ public class OrderService {
                                 paymentMethod)
                         .paymentStatus(
                                 "PENDING")
+                        .couponCode(
+                                couponCode)
                         .totalAmount(
                                 totalAmount)
                         .status(
@@ -374,9 +231,10 @@ public class OrderService {
 
         // =====================================================
         // CREATE ORDER ITEMS
-        // + COMMISSION
-        // + STOCK UPDATE
         // =====================================================
+
+        List<OrderItem> savedOrderItems =
+                new ArrayList<>();
 
         for (int i = 0;
              i < request.getItems().size();
@@ -414,37 +272,263 @@ public class OrderService {
                                     itemSubtotal)
                             .build();
 
-            orderItemRepository.save(
-                    orderItem);
+            OrderItem savedItem =
+                    orderItemRepository.save(
+                            orderItem);
 
-            // =================================================
-            // VENDOR COMMISSION
-            // =================================================
+            savedOrderItems.add(savedItem);
+        }
 
-            commissionService.calculateCommission(
-                    savedOrder.getId(),
-                    product.getId(),
-                    product.getVendorEmail(),
-                    itemSubtotal
-            );
+        // =====================================================
+        // COD
+        // =====================================================
 
-            // =================================================
-            // REDUCE PRODUCT STOCK
-            // =================================================
+        if ("COD".equals(paymentMethod)) {
 
-            int newProductQuantity =
-                    product.getQuantity()
-                            - itemRequest.getQuantity();
+            finalizeOrder(
+                    savedOrder,
+                    savedOrderItems,
+                    appliedCoupon);
+
+            return convertToResponse(
+                    savedOrder,
+                    savedOrderItems);
+        }
+
+        // =====================================================
+        // RAZORPAY / ONLINE
+        //
+        // Stock is NOT reduced yet.
+        // =====================================================
+
+        return convertToResponse(
+                savedOrder,
+                savedOrderItems);
+    }
+
+    // =========================================================
+    // ATTACH RAZORPAY ORDER ID
+    // =========================================================
+
+    public void attachRazorpayOrderId(
+            Long orderId,
+            String customerEmail,
+            String razorpayOrderId) {
+
+        if (orderId == null) {
+            throw new RuntimeException(
+                    "Order ID is required");
+        }
+
+        if (razorpayOrderId == null
+                || razorpayOrderId.trim().isEmpty()) {
+
+            throw new RuntimeException(
+                    "Razorpay order ID is required");
+        }
+
+        Order order =
+                orderRepository.findById(orderId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Order not found: "
+                                                + orderId));
+
+        if (order.getCustomerEmail() == null
+                || !order.getCustomerEmail()
+                .equalsIgnoreCase(
+                        customerEmail)) {
+
+            throw new RuntimeException(
+                    "You are not authorized to modify this order");
+        }
+
+        if (!"RAZORPAY".equalsIgnoreCase(
+                order.getPaymentMethod())) {
+
+            throw new RuntimeException(
+                    "This order is not a Razorpay order");
+        }
+
+        if ("SUCCESS".equalsIgnoreCase(
+                order.getPaymentStatus())) {
+
+            throw new RuntimeException(
+                    "Payment has already been completed");
+        }
+
+        order.setRazorpayOrderId(
+                razorpayOrderId);
+
+        orderRepository.save(order);
+    }
+
+    // =========================================================
+    // FINALIZE RAZORPAY ORDER
+    // =========================================================
+
+    public OrderResponse finalizeRazorpayOrder(
+            Long orderId,
+            String customerEmail,
+            String razorpayOrderId) {
+
+        if (orderId == null) {
+            throw new RuntimeException(
+                    "Order ID is required");
+        }
+
+        if (customerEmail == null
+                || customerEmail.trim().isEmpty()) {
+
+            throw new RuntimeException(
+                    "Customer email is required");
+        }
+
+        if (razorpayOrderId == null
+                || razorpayOrderId.trim().isEmpty()) {
+
+            throw new RuntimeException(
+                    "Razorpay order ID is required");
+        }
+
+        Order order =
+                orderRepository.findById(orderId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Order not found: "
+                                                + orderId));
+
+        if (order.getCustomerEmail() == null
+                || !order.getCustomerEmail()
+                .equalsIgnoreCase(
+                        customerEmail)) {
+
+            throw new RuntimeException(
+                    "You are not authorized to finalize this order");
+        }
+
+        // -----------------------------------------------------
+        // Prevent duplicate finalization
+        // -----------------------------------------------------
+
+        if ("SUCCESS".equalsIgnoreCase(
+                order.getPaymentStatus())) {
+
+            return convertToResponse(
+                    order,
+                    orderItemRepository
+                            .findByOrderId(orderId));
+        }
+
+        // -----------------------------------------------------
+        // Check payment method
+        // -----------------------------------------------------
+
+        if (!"RAZORPAY".equalsIgnoreCase(
+                order.getPaymentMethod())) {
+
+            throw new RuntimeException(
+                    "This order is not a Razorpay order");
+        }
+
+        // -----------------------------------------------------
+        // Verify Razorpay order ID matches
+        // the one created for this ShopStack order
+        // -----------------------------------------------------
+
+        if (order.getRazorpayOrderId() == null
+                || !order.getRazorpayOrderId()
+                .equals(razorpayOrderId)) {
+
+            throw new RuntimeException(
+                    "Razorpay order ID does not match this order");
+        }
+
+        List<OrderItem> items =
+                orderItemRepository
+                        .findByOrderId(orderId);
+
+        if (items == null
+                || items.isEmpty()) {
+
+            throw new RuntimeException(
+                    "Order contains no items");
+        }
+
+        // -----------------------------------------------------
+        // Re-check stock
+        // -----------------------------------------------------
+
+        for (OrderItem item : items) {
+
+            if (item.getProductId() == null
+                    || item.getQuantity() == null) {
+
+                throw new RuntimeException(
+                        "Invalid order item");
+            }
+
+            Product product =
+                    productRepository
+                            .findById(
+                                    item.getProductId())
+                            .orElseThrow(() ->
+                                    new RuntimeException(
+                                            "Product not found: "
+                                                    + item
+                                                    .getProductId()));
+
+            if (product.getQuantity() == null
+                    || product.getQuantity()
+                    < item.getQuantity()) {
+
+                throw new RuntimeException(
+                        "Insufficient stock for product: "
+                                + product.getName());
+            }
+
+            Inventory inventory =
+                    inventoryRepository
+                            .findByProductId(
+                                    product.getId())
+                            .orElse(null);
+
+            if (inventory != null
+                    && inventory.getAvailableQuantity()
+                    < item.getQuantity()) {
+
+                throw new RuntimeException(
+                        "Insufficient inventory for product: "
+                                + product.getName());
+            }
+        }
+
+        // -----------------------------------------------------
+        // Reduce stock + inventory + commission
+        // -----------------------------------------------------
+
+        for (OrderItem item : items) {
+
+            Product product =
+                    productRepository
+                            .findById(
+                                    item.getProductId())
+                            .orElseThrow(() ->
+                                    new RuntimeException(
+                                            "Product not found: "
+                                                    + item
+                                                    .getProductId()));
+
+            int currentProductQuantity =
+                    product.getQuantity() == null
+                            ? 0
+                            : product.getQuantity();
 
             product.setQuantity(
-                    newProductQuantity);
+                    currentProductQuantity
+                            - item.getQuantity());
 
-            productRepository.save(
-                    product);
-
-            // =================================================
-            // REDUCE INVENTORY
-            // =================================================
+            productRepository.save(product);
 
             Inventory inventory =
                     inventoryRepository
@@ -462,16 +546,15 @@ public class OrderService {
                 int currentReserved =
                         inventory.getReservedQuantity() == null
                                 ? 0
-                                : inventory
-                                .getReservedQuantity();
+                                : inventory.getReservedQuantity();
 
                 int newQuantity =
                         currentQuantity
-                                - itemRequest.getQuantity();
+                                - item.getQuantity();
 
                 int newReserved =
                         currentReserved
-                                + itemRequest.getQuantity();
+                                + item.getQuantity();
 
                 if (newQuantity < 0) {
                     newQuantity = 0;
@@ -489,11 +572,343 @@ public class OrderService {
                 inventoryRepository.save(
                         inventory);
             }
+
+            commissionService.calculateCommission(
+                    orderId,
+                    product.getId(),
+                    product.getVendorEmail(),
+                    item.getSubtotal());
         }
 
-        // =====================================================
-        // UPDATE COUPON USAGE
-        // =====================================================
+        // -----------------------------------------------------
+        // Coupon usage
+        // -----------------------------------------------------
+
+        if (order.getCouponCode() != null
+                && !order.getCouponCode()
+                .trim()
+                .isEmpty()) {
+
+            Coupon coupon =
+                    couponRepository
+                            .findByCode(
+                                    order.getCouponCode()
+                                            .trim()
+                                            .toUpperCase())
+                            .orElse(null);
+
+            if (coupon != null) {
+
+                int usedCount =
+                        coupon.getUsedCount() == null
+                                ? 0
+                                : coupon.getUsedCount();
+
+                coupon.setUsedCount(
+                        usedCount + 1);
+
+                couponRepository.save(coupon);
+            }
+        }
+
+        // -----------------------------------------------------
+        // Final order status
+        // -----------------------------------------------------
+
+        order.setPaymentStatus(
+                "SUCCESS");
+
+        order.setPaymentMethod(
+                "RAZORPAY");
+
+        order.setStatus(
+                "CONFIRMED");
+
+        Order savedOrder =
+                orderRepository.save(order);
+
+        // -----------------------------------------------------
+        // Email
+        // -----------------------------------------------------
+
+        emailService.sendOrderPlacedEmail(
+                savedOrder,
+                items);
+
+        return convertToResponse(
+                savedOrder,
+                items);
+    }
+
+    // =========================================================
+    // VALIDATE ORDER REQUEST
+    // =========================================================
+
+    private void validateOrderRequest(
+            OrderRequest request) {
+
+        if (request == null
+                || request.getItems() == null
+                || request.getItems().isEmpty()) {
+
+            throw new RuntimeException(
+                    "Order must contain at least one product");
+        }
+    }
+
+    // =========================================================
+    // VALIDATE PAYMENT METHOD
+    // =========================================================
+
+    private String validatePaymentMethod(
+            String paymentMethod) {
+
+        if (paymentMethod == null
+                || paymentMethod.trim().isEmpty()) {
+
+            throw new RuntimeException(
+                    "Payment method is required");
+        }
+
+        String method =
+                paymentMethod
+                        .trim()
+                        .toUpperCase();
+
+        if (!method.equals("COD")
+                && !method.equals("RAZORPAY")
+                && !method.equals("CARD")
+                && !method.equals("UPI")) {
+
+            throw new RuntimeException(
+                    "Invalid payment method. "
+                            + "Allowed methods: COD, RAZORPAY, CARD, UPI");
+        }
+
+        return method;
+    }
+
+    // =========================================================
+    // VALIDATE COUPON
+    // =========================================================
+
+    private Coupon validateCoupon(
+            String couponCode,
+            BigDecimal subtotal) {
+
+        Coupon coupon =
+                couponRepository
+                        .findByCode(couponCode)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Invalid coupon code"));
+
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        if (!Boolean.TRUE.equals(
+                coupon.getActive())) {
+
+            throw new RuntimeException(
+                    "Coupon is inactive");
+        }
+
+        if (coupon.getStartDate() != null
+                && now.isBefore(
+                coupon.getStartDate())) {
+
+            throw new RuntimeException(
+                    "Coupon is not active yet");
+        }
+
+        if (coupon.getExpiryDate() != null
+                && now.isAfter(
+                coupon.getExpiryDate())) {
+
+            throw new RuntimeException(
+                    "Coupon has expired");
+        }
+
+        int usedCount =
+                coupon.getUsedCount() == null
+                        ? 0
+                        : coupon.getUsedCount();
+
+        if (coupon.getUsageLimit() != null
+                && usedCount
+                >= coupon.getUsageLimit()) {
+
+            throw new RuntimeException(
+                    "Coupon usage limit reached");
+        }
+
+        if (coupon.getMinimumOrderAmount() != null
+                && subtotal.compareTo(
+                coupon.getMinimumOrderAmount()) < 0) {
+
+            throw new RuntimeException(
+                    "Minimum order amount for this coupon is "
+                            + coupon.getMinimumOrderAmount());
+        }
+
+        if (coupon.getDiscountValue() == null
+                || coupon.getDiscountValue()
+                .compareTo(BigDecimal.ZERO) <= 0) {
+
+            throw new RuntimeException(
+                    "Invalid coupon discount");
+        }
+
+        return coupon;
+    }
+
+    // =========================================================
+    // CALCULATE COUPON DISCOUNT
+    // =========================================================
+
+    private BigDecimal calculateDiscount(
+            Coupon coupon,
+            BigDecimal subtotal) {
+
+        BigDecimal discount =
+                BigDecimal.ZERO;
+
+        String discountType =
+                coupon.getDiscountType() == null
+                        ? ""
+                        : coupon.getDiscountType()
+                        .trim()
+                        .toUpperCase();
+
+        if ("PERCENTAGE".equals(discountType)
+                || "PERCENT".equals(discountType)) {
+
+            discount =
+                    subtotal
+                            .multiply(
+                                    coupon.getDiscountValue())
+                            .divide(
+                                    BigDecimal.valueOf(100));
+        }
+
+        else if ("FIXED".equals(discountType)
+                || "FLAT".equals(discountType)
+                || "AMOUNT".equals(discountType)) {
+
+            discount =
+                    coupon.getDiscountValue();
+        }
+
+        else {
+
+            throw new RuntimeException(
+                    "Invalid coupon discount type");
+        }
+
+        if (coupon.getMaximumDiscount() != null
+                && discount.compareTo(
+                coupon.getMaximumDiscount()) > 0) {
+
+            discount =
+                    coupon.getMaximumDiscount();
+        }
+
+        if (discount.compareTo(subtotal) > 0) {
+            discount = subtotal;
+        }
+
+        return discount;
+    }
+
+    // =========================================================
+    // FINALIZE NORMAL ORDER
+    // =========================================================
+
+    private void finalizeOrder(
+            Order order,
+            List<OrderItem> items,
+            Coupon appliedCoupon) {
+
+        for (OrderItem item : items) {
+
+            Product product =
+                    productRepository
+                            .findById(
+                                    item.getProductId())
+                            .orElseThrow(() ->
+                                    new RuntimeException(
+                                            "Product not found: "
+                                                    + item
+                                                    .getProductId()));
+
+            int currentProductQuantity =
+                    product.getQuantity() == null
+                            ? 0
+                            : product.getQuantity();
+
+            if (currentProductQuantity
+                    < item.getQuantity()) {
+
+                throw new RuntimeException(
+                        "Insufficient stock for product: "
+                                + product.getName());
+            }
+
+            product.setQuantity(
+                    currentProductQuantity
+                            - item.getQuantity());
+
+            productRepository.save(product);
+
+            Inventory inventory =
+                    inventoryRepository
+                            .findByProductId(
+                                    product.getId())
+                            .orElse(null);
+
+            if (inventory != null) {
+
+                int currentQuantity =
+                        inventory.getQuantity() == null
+                                ? 0
+                                : inventory.getQuantity();
+
+                int currentReserved =
+                        inventory.getReservedQuantity() == null
+                                ? 0
+                                : inventory.getReservedQuantity();
+
+                int newQuantity =
+                        currentQuantity
+                                - item.getQuantity();
+
+                int newReserved =
+                        currentReserved
+                                + item.getQuantity();
+
+                if (newQuantity < 0) {
+                    newQuantity = 0;
+                }
+
+                inventory.setQuantity(
+                        newQuantity);
+
+                inventory.setReservedQuantity(
+                        newReserved);
+
+                inventory.setLastUpdated(
+                        LocalDateTime.now());
+
+                inventoryRepository.save(
+                        inventory);
+            }
+
+            commissionService.calculateCommission(
+                    order.getId(),
+                    product.getId(),
+                    product.getVendorEmail(),
+                    item.getSubtotal());
+        }
 
         if (appliedCoupon != null) {
 
@@ -509,25 +924,17 @@ public class OrderService {
                     appliedCoupon);
         }
 
-        // =====================================================
-        // SEND ORDER PLACED EMAIL
-        // =====================================================
+        order.setStatus(
+                "PENDING");
 
-        List<OrderItem> savedOrderItems =
-                orderItemRepository.findByOrderId(
-                        savedOrder.getId());
+        order.setPaymentStatus(
+                "PENDING");
+
+        orderRepository.save(order);
 
         emailService.sendOrderPlacedEmail(
-                savedOrder,
-                savedOrderItems);
-
-        // =====================================================
-        // RETURN ORDER RESPONSE
-        // =====================================================
-
-        return convertToResponse(
-                savedOrder,
-                savedOrderItems);
+                order,
+                items);
     }
 
     // =========================================================
@@ -622,7 +1029,8 @@ public class OrderService {
                                 new RuntimeException(
                                         "Order not found"));
 
-        if (!order.getCustomerEmail()
+        if (order.getCustomerEmail() == null
+                || !order.getCustomerEmail()
                 .equalsIgnoreCase(
                         customerEmail)) {
 
@@ -845,7 +1253,8 @@ public class OrderService {
                                 new RuntimeException(
                                         "Order not found"));
 
-        if (!order.getCustomerEmail()
+        if (order.getCustomerEmail() == null
+                || !order.getCustomerEmail()
                 .equalsIgnoreCase(
                         customerEmail)) {
 
@@ -869,7 +1278,13 @@ public class OrderService {
 
         order.setStatus("CANCELLED");
 
-        restoreStock(id);
+        if ("SUCCESS".equalsIgnoreCase(
+                order.getPaymentStatus())
+                || "COD".equalsIgnoreCase(
+                order.getPaymentMethod())) {
+
+            restoreStock(id);
+        }
 
         Order savedOrder =
                 orderRepository.save(order);
@@ -894,7 +1309,8 @@ public class OrderService {
                                 new RuntimeException(
                                         "Order not found"));
 
-        if (!order.getCustomerEmail()
+        if (order.getCustomerEmail() == null
+                || !order.getCustomerEmail()
                 .equalsIgnoreCase(
                         customerEmail)) {
 
@@ -1219,7 +1635,6 @@ public class OrderService {
                                 .orElse(null);
 
                 if (product != null) {
-
                     imageUrl =
                             product.getImageUrl();
                 }

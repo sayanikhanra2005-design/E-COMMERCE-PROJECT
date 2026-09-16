@@ -1,7 +1,7 @@
 // CustomerCheckout.jsx
 
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import "./CustomerCheckout.css";
 
 function CustomerCheckout({
@@ -41,7 +41,7 @@ function CustomerCheckout({
     const [paymentMethod, setPaymentMethod] = useState("");
 
     // =========================================================
-    // ORDER
+    // ORDER / PAYMENT
     // =========================================================
 
     const [placingOrder, setPlacingOrder] = useState(false);
@@ -65,9 +65,7 @@ function CustomerCheckout({
 
     const getCartQuantity = (item) => {
 
-        const quantity = Number(
-            item?.cartQuantity
-        );
+        const quantity = Number(item?.cartQuantity);
 
         if (
             Number.isFinite(quantity) &&
@@ -92,11 +90,7 @@ function CustomerCheckout({
             0
         );
 
-        if (
-            Number.isFinite(
-                availableQuantity
-            )
-        ) {
+        if (Number.isFinite(availableQuantity)) {
             return availableQuantity;
         }
 
@@ -110,31 +104,75 @@ function CustomerCheckout({
     const subtotal = (cart || []).reduce(
         (total, item) => {
 
-            const price = Number(
-                item?.price ?? 0
-            );
+            const price = Number(item?.price ?? 0);
+            const quantity = getCartQuantity(item);
 
-            const quantity =
-                getCartQuantity(item);
-
-            return total + (
-                price * quantity
-            );
+            return total + (price * quantity);
         },
         0
     );
 
-    const discount =
-        appliedCoupon?.discountAmount
-            ? Number(
-                appliedCoupon.discountAmount
-            )
-            : 0;
+    const discount = appliedCoupon?.discountAmount
+        ? Number(appliedCoupon.discountAmount)
+        : 0;
 
     const finalTotal = Math.max(
         subtotal - discount,
         0
     );
+
+    // =========================================================
+    // RAZORPAY SCRIPT
+    // =========================================================
+
+    const loadRazorpayScript = () => {
+
+        return new Promise((resolve) => {
+
+            if (window.Razorpay) {
+                resolve(true);
+                return;
+            }
+
+            const existingScript =
+                document.querySelector(
+                    'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+                );
+
+            if (existingScript) {
+
+                existingScript.addEventListener(
+                    "load",
+                    () => resolve(true)
+                );
+
+                existingScript.addEventListener(
+                    "error",
+                    () => resolve(false)
+                );
+
+                return;
+            }
+
+            const script =
+                document.createElement("script");
+
+            script.src =
+                "https://checkout.razorpay.com/v1/checkout.js";
+
+            script.async = true;
+
+            script.onload = () => {
+                resolve(true);
+            };
+
+            script.onerror = () => {
+                resolve(false);
+            };
+
+            document.body.appendChild(script);
+        });
+    };
 
     // =========================================================
     // FRIENDLY ORDER ERROR
@@ -147,8 +185,7 @@ function CustomerCheckout({
             return "Unable to connect to the server. Please check your connection and try again.";
         }
 
-        const status =
-            error.response?.status;
+        const status = error.response?.status;
 
         const backendMessage =
             error.response?.data?.message ||
@@ -156,17 +193,13 @@ function CustomerCheckout({
             "";
 
         const message =
-            String(
-                backendMessage
-            ).toLowerCase();
+            String(backendMessage).toLowerCase();
 
         if (status === 401) {
-
             return "Your session has expired. Please login again.";
         }
 
         if (status === 403) {
-
             return "You are not authorized to place this order.";
         }
 
@@ -177,7 +210,6 @@ function CustomerCheckout({
             message.includes("quantity") ||
             message.includes("available")
         ) {
-
             return "Some products do not have enough stock. Please update your cart and try again.";
         }
 
@@ -189,7 +221,6 @@ function CustomerCheckout({
                 message.includes("deleted")
             )
         ) {
-
             return "One of the products in your cart is no longer available.";
         }
 
@@ -201,7 +232,6 @@ function CustomerCheckout({
                 message.includes("required")
             )
         ) {
-
             return "The selected delivery address is no longer available. Please select another address.";
         }
 
@@ -209,30 +239,26 @@ function CustomerCheckout({
             message.includes("coupon") ||
             message.includes("discount")
         ) {
-
             return "The selected coupon is invalid, expired, or cannot be used for this order.";
         }
 
         if (
             message.includes("payment") ||
-            message.includes("transaction")
+            message.includes("transaction") ||
+            message.includes("razorpay")
         ) {
-
-            return "Payment could not be completed. Please try another payment method.";
+            return "Payment could not be completed. Please try again or select another payment method.";
         }
 
         if (status === 400) {
-
             return "Please check your order details and try again.";
         }
 
         if (status === 404) {
-
             return "The requested information could not be found. Please refresh the page and try again.";
         }
 
         if (status >= 500) {
-
             return "Server error. Please try again later.";
         }
 
@@ -262,31 +288,21 @@ function CustomerCheckout({
                             "Please login to continue."
                         );
 
-                        setLoadingAddresses(
-                            false
-                        );
+                        setLoadingAddresses(false);
                     }
 
                     return;
                 }
 
                 const response =
-                    await axios.get(
-                        "http://localhost:8080/customer/addresses",
-                        {
-                            headers: {
-                                Authorization:
-                                    `Bearer ${token}`
-                            }
-                        }
+                    await api.get(
+                        "/customer/addresses"
                     );
 
                 if (!cancelled) {
 
                     const loadedAddresses =
-                        Array.isArray(
-                            response.data
-                        )
+                        Array.isArray(response.data)
                             ? response.data
                             : [];
 
@@ -304,10 +320,7 @@ function CustomerCheckout({
                     }
 
                     setAddressError("");
-
-                    setLoadingAddresses(
-                        false
-                    );
+                    setLoadingAddresses(false);
                 }
 
             } catch (error) {
@@ -358,9 +371,7 @@ function CustomerCheckout({
                         );
                     }
 
-                    setLoadingAddresses(
-                        false
-                    );
+                    setLoadingAddresses(false);
                 }
             }
         };
@@ -368,7 +379,6 @@ function CustomerCheckout({
         loadAddresses();
 
         return () => {
-
             cancelled = true;
         };
 
@@ -394,14 +404,8 @@ function CustomerCheckout({
                 }
 
                 const response =
-                    await axios.get(
-                        "http://localhost:8080/customer/coupons/active",
-                        {
-                            headers: {
-                                Authorization:
-                                    `Bearer ${token}`
-                            }
-                        }
+                    await api.get(
+                        "/customer/coupons/active"
                     );
 
                 console.log(
@@ -412,9 +416,7 @@ function CustomerCheckout({
                 if (!cancelled) {
 
                     setCoupons(
-                        Array.isArray(
-                            response.data
-                        )
+                        Array.isArray(response.data)
                             ? response.data
                             : []
                     );
@@ -428,7 +430,6 @@ function CustomerCheckout({
                 );
 
                 if (!cancelled) {
-
                     setCoupons([]);
                 }
             }
@@ -437,7 +438,6 @@ function CustomerCheckout({
         loadCoupons();
 
         return () => {
-
             cancelled = true;
         };
 
@@ -468,24 +468,15 @@ function CustomerCheckout({
 
     const validateAddress = () => {
 
-        if (
-            !addressForm.addressLine.trim()
-        ) {
-
+        if (!addressForm.addressLine.trim()) {
             return "Address is required.";
         }
 
-        if (
-            !addressForm.city.trim()
-        ) {
-
+        if (!addressForm.city.trim()) {
             return "City is required.";
         }
 
-        if (
-            !addressForm.state.trim()
-        ) {
-
+        if (!addressForm.state.trim()) {
             return "State is required.";
         }
 
@@ -494,14 +485,10 @@ function CustomerCheckout({
                 addressForm.postalCode.trim()
             )
         ) {
-
             return "Please enter a valid postal code.";
         }
 
-        if (
-            !addressForm.country.trim()
-        ) {
-
+        if (!addressForm.country.trim()) {
             return "Country is required.";
         }
 
@@ -510,7 +497,6 @@ function CustomerCheckout({
                 addressForm.phoneNumber.trim()
             )
         ) {
-
             return "Please enter a valid 10-digit phone number.";
         }
 
@@ -557,35 +543,21 @@ function CustomerCheckout({
             }
 
             const response =
-                await axios.post(
-                    "http://localhost:8080/customer/addresses",
-                    addressForm,
-                    {
-                        headers: {
-                            Authorization:
-                                `Bearer ${token}`
-                        }
-                    }
+                await api.post(
+                    "/customer/addresses",
+                    addressForm
                 );
 
             const newAddress =
                 response.data;
 
             const addressResponse =
-                await axios.get(
-                    "http://localhost:8080/customer/addresses",
-                    {
-                        headers: {
-                            Authorization:
-                                `Bearer ${token}`
-                        }
-                    }
+                await api.get(
+                    "/customer/addresses"
                 );
 
             const updatedAddresses =
-                Array.isArray(
-                    addressResponse.data
-                )
+                Array.isArray(addressResponse.data)
                     ? addressResponse.data
                     : [];
 
@@ -764,10 +736,7 @@ function CustomerCheckout({
 
         setStep(
             (previous) =>
-                Math.min(
-                    previous + 1,
-                    3
-                )
+                Math.min(previous + 1, 3)
         );
     };
 
@@ -781,10 +750,7 @@ function CustomerCheckout({
 
         setStep(
             (previous) =>
-                Math.max(
-                    previous - 1,
-                    1
-                )
+                Math.max(previous - 1, 1)
         );
     };
 
@@ -811,7 +777,6 @@ function CustomerCheckout({
         try {
 
             setCouponLoading(true);
-
             setCouponError("");
             setCouponMessage("");
 
@@ -827,23 +792,14 @@ function CustomerCheckout({
                 return;
             }
 
-            // =================================================
-            // IMPORTANT:
-            // CUSTOMER COUPON VALIDATION ENDPOINT
-            // =================================================
-
             const response =
-                await axios.post(
-                    "http://localhost:8080/customer/coupons/validate",
+                await api.post(
+                    "/customer/coupons/validate",
                     null,
                     {
                         params: {
                             code: code,
                             orderAmount: subtotal
-                        },
-                        headers: {
-                            Authorization:
-                                `Bearer ${token}`
                         }
                     }
                 );
@@ -866,9 +822,7 @@ function CustomerCheckout({
                         0
                     );
 
-                if (
-                    discountAmount <= 0
-                ) {
+                if (discountAmount <= 0) {
 
                     setAppliedCoupon(null);
 
@@ -985,6 +939,266 @@ function CustomerCheckout({
     };
 
     // =========================================================
+    // VERIFY RAZORPAY PAYMENT
+    // =========================================================
+
+    const verifyRazorpayPayment = async ({
+        orderId,
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature
+    }) => {
+
+        try {
+
+            setPaymentProcessing(true);
+            setOrderError("");
+
+            const response =
+                await api.post(
+                    "/customer/payments/razorpay/verify",
+                    {
+                        orderId:
+                            Number(orderId),
+
+                        razorpayOrderId:
+                            razorpayOrderId,
+
+                        razorpayPaymentId:
+                            razorpayPaymentId,
+
+                        razorpaySignature:
+                            razorpaySignature
+                    }
+                );
+
+            console.log(
+                "Razorpay verification response:",
+                response.data
+            );
+
+            setPaymentProcessing(false);
+            setPlacingOrder(false);
+            setOrderError("");
+
+            if (onOrderPlaced) {
+
+                onOrderPlaced(
+                    response.data
+                );
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Razorpay verification error:",
+                error
+            );
+
+            setPaymentProcessing(false);
+            setPlacingOrder(false);
+
+            setOrderError(
+                getFriendlyOrderError(error)
+            );
+        }
+    };
+
+    // =========================================================
+    // OPEN RAZORPAY CHECKOUT
+    // =========================================================
+
+    const openRazorpayCheckout = async (orderData) => {
+
+        const scriptLoaded =
+            await loadRazorpayScript();
+
+        if (!scriptLoaded) {
+
+            setPaymentProcessing(false);
+            setPlacingOrder(false);
+
+            setOrderError(
+                "Unable to load Razorpay Checkout. Please check your internet connection and try again."
+            );
+
+            return;
+        }
+
+        try {
+
+            // -------------------------------------------------
+            // CREATE RAZORPAY ORDER ON BACKEND
+            // -------------------------------------------------
+
+            const razorpayResponse =
+                await api.post(
+                    "/customer/payments/razorpay/create-order",
+                    {
+                        orderId:
+                            Number(orderData.id)
+                    }
+                );
+
+            console.log(
+                "Razorpay order response:",
+                razorpayResponse.data
+            );
+
+            const razorpayData =
+                razorpayResponse.data;
+
+            if (
+                !razorpayData?.razorpayOrderId ||
+                !razorpayData?.keyId
+            ) {
+
+                throw new Error(
+                    "Invalid Razorpay order response."
+                );
+            }
+
+            const razorpayAmount =
+                Math.round(
+                    Number(
+                        razorpayData.amount
+                    ) * 100
+                );
+
+            if (
+                !Number.isFinite(
+                    razorpayAmount
+                ) ||
+                razorpayAmount <= 0
+            ) {
+
+                throw new Error(
+                    "Invalid payment amount."
+                );
+            }
+
+            // -------------------------------------------------
+            // STOP OUR OVERLAY BEFORE RAZORPAY OPENS
+            // -------------------------------------------------
+
+            setPaymentProcessing(false);
+
+            const options = {
+
+                key:
+                    razorpayData.keyId,
+
+                amount:
+                    razorpayAmount,
+
+                currency:
+                    razorpayData.currency ||
+                    "INR",
+
+                name:
+                    "ShopStack",
+
+                description:
+                    `ShopStack Order #${orderData.id}`,
+
+                order_id:
+                    razorpayData.razorpayOrderId,
+
+                theme: {
+                    color: "#2563eb"
+                },
+
+                handler:
+                    async (paymentResponse) => {
+
+                        console.log(
+                            "Razorpay payment response:",
+                            paymentResponse
+                        );
+
+                        await verifyRazorpayPayment({
+
+                            orderId:
+                                orderData.id,
+
+                            razorpayOrderId:
+                                paymentResponse.razorpay_order_id,
+
+                            razorpayPaymentId:
+                                paymentResponse.razorpay_payment_id,
+
+                            razorpaySignature:
+                                paymentResponse.razorpay_signature
+                        });
+                    },
+
+                modal: {
+
+                    ondismiss: () => {
+
+                        setPaymentProcessing(false);
+                        setPlacingOrder(false);
+
+                        setOrderError(
+                            "Razorpay payment was cancelled. Your order has not been confirmed."
+                        );
+                    }
+                }
+            };
+
+            const razorpay =
+                new window.Razorpay(
+                    options
+                );
+
+            razorpay.on(
+                "payment.failed",
+                (response) => {
+
+                    console.error(
+                        "Razorpay payment failed:",
+                        response
+                    );
+
+                    setPaymentProcessing(false);
+                    setPlacingOrder(false);
+
+                    setOrderError(
+                        response?.error?.description ||
+                        "Razorpay payment failed. Please try again."
+                    );
+                }
+            );
+
+            razorpay.open();
+
+        } catch (error) {
+
+            console.error(
+                "Razorpay checkout error:",
+                error
+            );
+
+            setPaymentProcessing(false);
+            setPlacingOrder(false);
+
+            if (error.response) {
+
+                setOrderError(
+                    getFriendlyOrderError(error)
+                );
+
+            } else {
+
+                setOrderError(
+                    error.message ||
+                    "Unable to start Razorpay payment. Please try again."
+                );
+            }
+        }
+    };
+
+    // =========================================================
     // PLACE ORDER
     // =========================================================
 
@@ -1080,9 +1294,7 @@ function CustomerCheckout({
                 return;
             }
 
-            if (
-                availableQuantity <= 0
-            ) {
+            if (availableQuantity <= 0) {
 
                 setOrderError(
                     `${item.name} is currently out of stock.`
@@ -1137,7 +1349,6 @@ function CustomerCheckout({
 
                         quantity:
                             getCartQuantity(item)
-
                     })
                 );
 
@@ -1165,33 +1376,71 @@ function CustomerCheckout({
                 orderRequest
             );
 
+            // =================================================
+            // CREATE SHOPSTACK ORDER
+            // =================================================
+
             const response =
-                await axios.post(
-                    "http://localhost:8080/customer/orders",
-                    orderRequest,
-                    {
-                        headers: {
-                            Authorization:
-                                `Bearer ${token}`
-                        }
-                    }
+                await api.post(
+                    "/customer/orders",
+                    orderRequest
                 );
 
             console.log(
-                "Order placed successfully:",
+                "ShopStack order response:",
                 response.data
             );
 
+            const orderData =
+                response.data;
+
+            // =================================================
+            // COD
+            // =================================================
+
+            if (
+                paymentMethod === "COD"
+            ) {
+
+                setPaymentProcessing(false);
+                setPlacingOrder(false);
+                setOrderError("");
+
+                if (onOrderPlaced) {
+
+                    onOrderPlaced(
+                        orderData
+                    );
+                }
+
+                return;
+            }
+
+            // =================================================
+            // RAZORPAY
+            // =================================================
+
+            if (
+                paymentMethod === "RAZORPAY"
+            ) {
+
+                await openRazorpayCheckout(
+                    orderData
+                );
+
+                return;
+            }
+
+            // =================================================
+            // OLD CARD / UPI FALLBACK
+            // =================================================
+
             setPaymentProcessing(false);
             setPlacingOrder(false);
-            setOrderError("");
 
-            if (onOrderPlaced) {
-
-                onOrderPlaced(
-                    response.data
-                );
-            }
+            setOrderError(
+                "Please select Cash on Delivery or Razorpay."
+            );
 
         } catch (error) {
 
@@ -1214,9 +1463,7 @@ function CustomerCheckout({
             setPlacingOrder(false);
 
             setOrderError(
-                getFriendlyOrderError(
-                    error
-                )
+                getFriendlyOrderError(error)
             );
         }
     };
@@ -1249,9 +1496,7 @@ function CustomerCheckout({
 
                 <button
                     className="checkout-back-btn"
-                    onClick={
-                        onBackToCart
-                    }
+                    onClick={onBackToCart}
                 >
                     ← Back to Cart
                 </button>
@@ -1274,9 +1519,7 @@ function CustomerCheckout({
 
                 <button
                     className="checkout-back-btn"
-                    onClick={
-                        onBackToCart
-                    }
+                    onClick={onBackToCart}
                 >
                     ← Back to Cart
                 </button>
@@ -1712,9 +1955,7 @@ function CustomerCheckout({
 
                                         <button
                                             className="checkout-next-btn"
-                                            onClick={
-                                                nextStep
-                                            }
+                                            onClick={nextStep}
                                             disabled={
                                                 !selectedAddress ||
                                                 showAddAddress
@@ -1763,6 +2004,8 @@ function CustomerCheckout({
 
                             <div className="payment-methods">
 
+                                {/* COD */}
+
                                 <label
                                     className={
                                         paymentMethod === "COD"
@@ -1799,9 +2042,11 @@ function CustomerCheckout({
 
                                 </label>
 
+                                {/* RAZORPAY */}
+
                                 <label
                                     className={
-                                        paymentMethod === "CARD"
+                                        paymentMethod === "RAZORPAY"
                                             ? "payment-method selected"
                                             : "payment-method"
                                     }
@@ -1810,9 +2055,9 @@ function CustomerCheckout({
                                     <input
                                         type="radio"
                                         name="payment"
-                                        value="CARD"
+                                        value="RAZORPAY"
                                         checked={
-                                            paymentMethod === "CARD"
+                                            paymentMethod === "RAZORPAY"
                                         }
                                         onChange={(e) =>
                                             setPaymentMethod(
@@ -1824,47 +2069,11 @@ function CustomerCheckout({
                                     <div>
 
                                         <strong>
-                                            💳 Credit / Debit Card
+                                            💳 Razorpay
                                         </strong>
 
                                         <p>
-                                            Secure online card payment.
-                                        </p>
-
-                                    </div>
-
-                                </label>
-
-                                <label
-                                    className={
-                                        paymentMethod === "UPI"
-                                            ? "payment-method selected"
-                                            : "payment-method"
-                                    }
-                                >
-
-                                    <input
-                                        type="radio"
-                                        name="payment"
-                                        value="UPI"
-                                        checked={
-                                            paymentMethod === "UPI"
-                                        }
-                                        onChange={(e) =>
-                                            setPaymentMethod(
-                                                e.target.value
-                                            )
-                                        }
-                                    />
-
-                                    <div>
-
-                                        <strong>
-                                            📱 UPI
-                                        </strong>
-
-                                        <p>
-                                            Pay using any UPI application.
+                                            Pay securely using Card, UPI, Net Banking or Wallet.
                                         </p>
 
                                     </div>
@@ -1877,21 +2086,15 @@ function CustomerCheckout({
 
                                 <button
                                     className="checkout-prev-btn"
-                                    onClick={
-                                        previousStep
-                                    }
+                                    onClick={previousStep}
                                 >
                                     ← Back
                                 </button>
 
                                 <button
                                     className="checkout-next-btn"
-                                    onClick={
-                                        nextStep
-                                    }
-                                    disabled={
-                                        !paymentMethod
-                                    }
+                                    onClick={nextStep}
+                                    disabled={!paymentMethod}
                                 >
                                     Review Order →
                                 </button>
@@ -2018,9 +2221,7 @@ function CustomerCheckout({
                                     {
                                         paymentMethod === "COD"
                                             ? "💵 Cash on Delivery"
-                                            : paymentMethod === "CARD"
-                                                ? "💳 Credit / Debit Card"
-                                                : "📱 UPI"
+                                            : "💳 Razorpay"
                                     }
                                 </p>
 
@@ -2048,9 +2249,7 @@ function CustomerCheckout({
 
                                             <select
                                                 className="coupon-dropdown"
-                                                value={
-                                                    couponCode
-                                                }
+                                                value={couponCode}
                                                 onChange={(e) => {
 
                                                     const selectedCode =
@@ -2281,8 +2480,10 @@ function CustomerCheckout({
 
                                 <button
                                     className="checkout-prev-btn"
-                                    onClick={
-                                        previousStep
+                                    onClick={previousStep}
+                                    disabled={
+                                        placingOrder ||
+                                        paymentProcessing
                                     }
                                 >
                                     ← Back
@@ -2290,9 +2491,7 @@ function CustomerCheckout({
 
                                 <button
                                     className="place-order-btn"
-                                    onClick={
-                                        handlePlaceOrder
-                                    }
+                                    onClick={handlePlaceOrder}
                                     disabled={
                                         placingOrder ||
                                         paymentProcessing
@@ -2301,7 +2500,9 @@ function CustomerCheckout({
 
                                     {
                                         placingOrder
-                                            ? "Placing Order..."
+                                            ? paymentMethod === "RAZORPAY"
+                                                ? "Opening Razorpay..."
+                                                : "Placing Order..."
                                             : `Place Order • ₹${finalTotal.toFixed(2)}`
                                     }
 
@@ -2461,7 +2662,7 @@ function CustomerCheckout({
                         </h2>
 
                         <p>
-                            Please wait while we place your order...
+                            Please wait while we securely process your order...
                         </p>
 
                     </div>

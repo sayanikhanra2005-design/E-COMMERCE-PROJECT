@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import "./CustomerDashboard.css";
 
 import CustomerProductManagement from "./CustomerProductManagement";
@@ -32,14 +32,7 @@ const CustomerDashboard = () => {
         try {
             setLoadingOrders(true);
 
-            const response = await axios.get(
-                "http://localhost:8080/customer/orders",
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
+            const response = await api.get("/customer/orders");
 
             if (Array.isArray(response.data)) {
                 setOrderCount(response.data.length);
@@ -444,10 +437,7 @@ const CustomerDashboard = () => {
 
                 <section className="customer-content">
 
-                    {/* =================================================
-                        CHECKOUT
-                    ================================================= */}
-
+                    {/* CHECKOUT */}
                     {showCheckout && (
                         <CustomerCheckout
                             cart={cart}
@@ -456,15 +446,11 @@ const CustomerDashboard = () => {
                         />
                     )}
 
-                    {/* =================================================
-                        DASHBOARD
-                    ================================================= */}
-
+                    {/* DASHBOARD */}
                     {!showCheckout && activePage === "dashboard" && (
                         <>
 
                             {/* STATISTICS */}
-
                             <div className="customer-statistics">
 
                                 {/* ORDERS */}
@@ -579,10 +565,7 @@ const CustomerDashboard = () => {
 
                             </div>
 
-                            {/* =================================================
-                                QUICK ACTIONS
-                            ================================================= */}
-
+                            {/* QUICK ACTIONS */}
                             <div className="customer-quick-actions">
 
                                 <div className="customer-section-header">
@@ -715,10 +698,7 @@ const CustomerDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* =================================================
-                                WELCOME CARD
-                            ================================================= */}
-
+                            {/* WELCOME CARD */}
                             <div className="customer-welcome-card">
 
                                 <div className="customer-welcome-content">
@@ -756,10 +736,7 @@ const CustomerDashboard = () => {
                         </>
                     )}
 
-                    {/* =================================================
-                        PRODUCTS
-                    ================================================= */}
-
+                    {/* PRODUCTS */}
                     {!showCheckout && activePage === "products" && (
                         <CustomerProductManagement
                             cart={cart}
@@ -768,18 +745,12 @@ const CustomerDashboard = () => {
                         />
                     )}
 
-                    {/* =================================================
-                        ORDERS
-                    ================================================= */}
-
+                    {/* ORDERS */}
                     {!showCheckout && activePage === "orders" && (
                         <CustomerOrderManagement />
                     )}
 
-                    {/* =================================================
-                        CART
-                    ================================================= */}
-
+                    {/* CART */}
                     {!showCheckout && activePage === "cart" && (
                         <CustomerCart
                             cart={cart}
@@ -788,26 +759,17 @@ const CustomerDashboard = () => {
                         />
                     )}
 
-                    {/* =================================================
-                        ADDRESSES
-                    ================================================= */}
-
+                    {/* ADDRESSES */}
                     {!showCheckout && activePage === "addresses" && (
                         <CustomerAddress />
                     )}
 
-                    {/* =================================================
-                        PROFILE
-                    ================================================= */}
-
+                    {/* PROFILE */}
                     {!showCheckout && activePage === "profile" && (
                         <CustomerProfile />
                     )}
 
-                    {/* =================================================
-                        SETTINGS
-                    ================================================= */}
-
+                    {/* SETTINGS */}
                     {!showCheckout && activePage === "settings" && (
                         <div className="customer-coming-soon">
 

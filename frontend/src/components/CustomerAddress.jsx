@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import "./CustomerAddress.css";
 
 function CustomerAddress() {
-
     const [addresses, setAddresses] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -20,7 +19,7 @@ function CustomerAddress() {
         state: "",
         postalCode: "",
         country: "",
-        phoneNumber: ""
+        phoneNumber: "",
     });
 
     // =========================================================
@@ -34,7 +33,7 @@ function CustomerAddress() {
             state: "",
             postalCode: "",
             country: "",
-            phoneNumber: ""
+            phoneNumber: "",
         });
 
         setEditingId(null);
@@ -46,41 +45,33 @@ function CustomerAddress() {
     // =========================================================
 
     const fetchAddresses = async () => {
-
         try {
-
             setError("");
 
-            const token = localStorage.getItem("token");
-
-            const response = await axios.get(
-                "http://localhost:8080/customer/addresses",
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
-            );
+            const response = await api.get("/customer/addresses");
 
             setAddresses(response.data || []);
-
         } catch (err) {
-
             console.error("Address fetch error:", err);
 
-            if (err.response?.status === 401 || err.response?.status === 403) {
-                setError("Your session has expired. Please login again.");
+            if (
+                err.response?.status === 401 ||
+                err.response?.status === 403
+            ) {
+                setError(
+                    "Your session has expired. Please login again."
+                );
             } else if (err.response?.status >= 500) {
-                setError("Server error. Please try again later.");
+                setError(
+                    "Server error. Please try again later."
+                );
             } else {
                 setError(
                     err.response?.data?.message ||
                     "Unable to load your addresses."
                 );
             }
-
         } finally {
-
             setLoading(false);
         }
     };
@@ -90,35 +81,25 @@ function CustomerAddress() {
     // =========================================================
 
     useEffect(() => {
-
         let cancelled = false;
 
         const loadAddresses = async () => {
-
             try {
-
-                const token = localStorage.getItem("token");
-
-                const response = await axios.get(
-                    "http://localhost:8080/customer/addresses",
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    }
+                const response = await api.get(
+                    "/customer/addresses"
                 );
 
                 if (!cancelled) {
                     setAddresses(response.data || []);
                     setError("");
                 }
-
             } catch (err) {
-
-                console.error("Address fetch error:", err);
+                console.error(
+                    "Address fetch error:",
+                    err
+                );
 
                 if (!cancelled) {
-
                     if (
                         err.response?.status === 401 ||
                         err.response?.status === 403
@@ -126,7 +107,9 @@ function CustomerAddress() {
                         setError(
                             "Your session has expired. Please login again."
                         );
-                    } else if (err.response?.status >= 500) {
+                    } else if (
+                        err.response?.status >= 500
+                    ) {
                         setError(
                             "Server error. Please try again later."
                         );
@@ -137,21 +120,21 @@ function CustomerAddress() {
                         );
                     }
                 }
-
             } finally {
-
                 if (!cancelled) {
                     setLoading(false);
                 }
             }
         };
 
-        loadAddresses();
+        const timer = setTimeout(() => {
+            loadAddresses();
+        }, 0);
 
         return () => {
             cancelled = true;
+            clearTimeout(timer);
         };
-
     }, []);
 
     // =========================================================
@@ -159,12 +142,11 @@ function CustomerAddress() {
     // =========================================================
 
     const handleChange = (e) => {
-
         const { name, value } = e.target;
 
         setFormData((previous) => ({
             ...previous,
-            [name]: value
+            [name]: value,
         }));
     };
 
@@ -173,7 +155,6 @@ function CustomerAddress() {
     // =========================================================
 
     const validateForm = () => {
-
         if (!formData.addressLine.trim()) {
             return "Address is required.";
         }
@@ -214,7 +195,6 @@ function CustomerAddress() {
     // =========================================================
 
     const handleSubmit = async (e) => {
-
         e.preventDefault();
 
         setError("");
@@ -228,45 +208,36 @@ function CustomerAddress() {
         }
 
         try {
-
             setSaving(true);
 
-            const token = localStorage.getItem("token");
-
-            const config = {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            };
-
             if (editingId) {
-
-                await axios.put(
-                    `http://localhost:8080/customer/addresses/${editingId}`,
-                    formData,
-                    config
+                await api.put(
+                    `/customer/addresses/${editingId}`,
+                    formData
                 );
 
-                setSuccessMessage("Address updated successfully.");
-
+                setSuccessMessage(
+                    "Address updated successfully."
+                );
             } else {
-
-                await axios.post(
-                    "http://localhost:8080/customer/addresses",
-                    formData,
-                    config
+                await api.post(
+                    "/customer/addresses",
+                    formData
                 );
 
-                setSuccessMessage("Address added successfully.");
+                setSuccessMessage(
+                    "Address added successfully."
+                );
             }
 
             await fetchAddresses();
 
             resetForm();
-
         } catch (err) {
-
-            console.error("Address save error:", err);
+            console.error(
+                "Address save error:",
+                err
+            );
 
             if (
                 err.response?.status === 401 ||
@@ -275,7 +246,9 @@ function CustomerAddress() {
                 setError(
                     "Your session has expired. Please login again."
                 );
-            } else if (err.response?.status >= 500) {
+            } else if (
+                err.response?.status >= 500
+            ) {
                 setError(
                     "Server error. Please try again later."
                 );
@@ -285,9 +258,7 @@ function CustomerAddress() {
                     "Unable to save the address."
                 );
             }
-
         } finally {
-
             setSaving(false);
         }
     };
@@ -297,7 +268,6 @@ function CustomerAddress() {
     // =========================================================
 
     const handleEdit = (address) => {
-
         setError("");
         setSuccessMessage("");
 
@@ -307,7 +277,7 @@ function CustomerAddress() {
             state: address.state || "",
             postalCode: address.postalCode || "",
             country: address.country || "",
-            phoneNumber: address.phoneNumber || ""
+            phoneNumber: address.phoneNumber || "",
         });
 
         setEditingId(address.id);
@@ -319,7 +289,6 @@ function CustomerAddress() {
     // =========================================================
 
     const handleAddNew = () => {
-
         setError("");
         setSuccessMessage("");
 
@@ -329,7 +298,7 @@ function CustomerAddress() {
             state: "",
             postalCode: "",
             country: "",
-            phoneNumber: ""
+            phoneNumber: "",
         });
 
         setEditingId(null);
@@ -341,7 +310,6 @@ function CustomerAddress() {
     // =========================================================
 
     const handleDelete = async (id) => {
-
         const confirmed = window.confirm(
             "Are you sure you want to delete this address?"
         );
@@ -351,30 +319,27 @@ function CustomerAddress() {
         }
 
         try {
-
             setError("");
             setSuccessMessage("");
 
-            const token = localStorage.getItem("token");
-
-            await axios.delete(
-                `http://localhost:8080/customer/addresses/${id}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
+            await api.delete(
+                `/customer/addresses/${id}`
             );
 
             setAddresses((previous) =>
-                previous.filter((address) => address.id !== id)
+                previous.filter(
+                    (address) => address.id !== id
+                )
             );
 
-            setSuccessMessage("Address deleted successfully.");
-
+            setSuccessMessage(
+                "Address deleted successfully."
+            );
         } catch (err) {
-
-            console.error("Address delete error:", err);
+            console.error(
+                "Address delete error:",
+                err
+            );
 
             if (
                 err.response?.status === 401 ||
@@ -383,7 +348,9 @@ function CustomerAddress() {
                 setError(
                     "Your session has expired. Please login again."
                 );
-            } else if (err.response?.status >= 500) {
+            } else if (
+                err.response?.status >= 500
+            ) {
                 setError(
                     "Server error. Please try again later."
                 );
@@ -407,11 +374,15 @@ function CustomerAddress() {
 
                 <div>
                     <h2>My Addresses</h2>
-                    <p>Manage your delivery addresses</p>
+
+                    <p>
+                        Manage your delivery addresses
+                    </p>
                 </div>
 
                 {!showForm && (
                     <button
+                        type="button"
                         className="add-address-btn"
                         onClick={handleAddNew}
                     >
@@ -615,14 +586,17 @@ function CustomerAddress() {
 
                         <div className="no-addresses">
 
-                            <h3>No addresses found</h3>
+                            <h3>
+                                No addresses found
+                            </h3>
 
                             <p>
-                                Add a delivery address to continue
-                                shopping.
+                                Add a delivery address to
+                                continue shopping.
                             </p>
 
                             <button
+                                type="button"
                                 className="add-address-btn"
                                 onClick={handleAddNew}
                             >
@@ -657,7 +631,8 @@ function CustomerAddress() {
                                     </p>
 
                                     <p>
-                                        📞 {address.phoneNumber}
+                                        📞{" "}
+                                        {address.phoneNumber}
                                     </p>
 
                                 </div>
@@ -665,6 +640,7 @@ function CustomerAddress() {
                                 <div className="address-card-actions">
 
                                     <button
+                                        type="button"
                                         className="edit-address-btn"
                                         onClick={() =>
                                             handleEdit(address)
@@ -674,9 +650,12 @@ function CustomerAddress() {
                                     </button>
 
                                     <button
+                                        type="button"
                                         className="delete-address-btn"
                                         onClick={() =>
-                                            handleDelete(address.id)
+                                            handleDelete(
+                                                address.id
+                                            )
                                         }
                                     >
                                         Delete

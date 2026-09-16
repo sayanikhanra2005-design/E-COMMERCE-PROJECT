@@ -1,5 +1,8 @@
 package com.infosys.springboard.authentication.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -7,260 +10,398 @@ import org.springframework.stereotype.Service;
 import com.infosys.springboard.authentication.dto.ProductRequest;
 import com.infosys.springboard.authentication.dto.ProductResponse;
 import com.infosys.springboard.authentication.dto.StockResponse;
+import com.infosys.springboard.authentication.entity.Inventory;
 import com.infosys.springboard.authentication.entity.Product;
+import com.infosys.springboard.authentication.repository.InventoryRepository;
 import com.infosys.springboard.authentication.repository.ProductRepository;
 
 @Service
 public class ProductService {
 
-private final ProductRepository productRepository;
+    private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository;
 
-public ProductService(ProductRepository productRepository) {
-    this.productRepository = productRepository;
-}
+    public ProductService(
+            ProductRepository productRepository,
+            InventoryRepository inventoryRepository) {
 
-// =========================================================
-// CREATE PRODUCT
-// =========================================================
+        this.productRepository = productRepository;
+        this.inventoryRepository = inventoryRepository;
+    }
 
-public ProductResponse createProduct(
-        ProductRequest request,
-        String vendorEmail) {
+    // =========================================================
+    // CREATE PRODUCT
+    // =========================================================
 
-    Product product = Product.builder()
-            .name(request.getName())
-            .category(request.getCategory())
-            .brand(request.getBrand())
-            .description(request.getDescription())
-            .price(request.getPrice())
-            .quantity(request.getQuantity())
-            .imageUrl(request.getImageUrl())
-            .vendorEmail(vendorEmail)
-            .build();
+    public ProductResponse createProduct(
+            ProductRequest request,
+            String vendorEmail) {
 
-    Product savedProduct =
-            productRepository.save(product);
+        BigDecimal originalPrice =
+                request.getOriginalPrice();
 
-    return convertToResponse(savedProduct);
-}
+        BigDecimal discountPercentage =
+                request.getDiscountPercentage();
 
-// =========================================================
-// GET ALL PRODUCTS
-// =========================================================
+        BigDecimal discountAmount =
+                originalPrice
+                        .multiply(discountPercentage)
+                        .divide(
+                                BigDecimal.valueOf(100),
+                                2,
+                                RoundingMode.HALF_UP
+                        );
 
-public List<ProductResponse> getAllProducts() {
+        BigDecimal finalPrice =
+                originalPrice
+                        .subtract(discountAmount)
+                        .setScale(2, RoundingMode.HALF_UP);
 
-    return productRepository.findAll()
-            .stream()
-            .map(this::convertToResponse)
-            .toList();
-}
+        Product product = Product.builder()
+                .name(request.getName())
+                .category(request.getCategory())
+                .brand(request.getBrand())
+                .description(request.getDescription())
+                .originalPrice(originalPrice)
+                .discountPercentage(discountPercentage)
+                .price(finalPrice)
+                .quantity(
+                        request.getQuantity() == null
+                                ? 0
+                                : request.getQuantity()
+                )
+                .imageUrl(request.getImageUrl())
+                .vendorEmail(vendorEmail)
+                .build();
 
-// =========================================================
-// GET PRODUCTS OF A PARTICULAR VENDOR
-// =========================================================
+        Product savedProduct =
+                productRepository.save(product);
 
-public List<ProductResponse> getVendorProducts(
-        String vendorEmail) {
+        // Create inventory automatically
+        Inventory inventory = new Inventory();
 
-    return productRepository
-            .findByVendorEmail(vendorEmail)
-            .stream()
-            .map(this::convertToResponse)
-            .toList();
-}
+        inventory.setProduct(savedProduct);
 
-// =========================================================
-// GET PRODUCT BY ID
-// =========================================================
+        int quantity =
+                savedProduct.getQuantity() == null
+                        ? 0
+                        : savedProduct.getQuantity();
 
-public ProductResponse getProductById(Long id) {
+        inventory.setQuantity(quantity);
+        inventory.setReservedQuantity(0);
+        inventory.setAvailableQuantity(quantity);
+        inventory.setLastUpdated(LocalDateTime.now());
 
-    Product product =
-            productRepository.findById(id)
-                    .orElseThrow(() ->
-                            new RuntimeException(
-                                    "Product not found"
-                            )
-                    );
+        inventoryRepository.save(inventory);
 
-    return convertToResponse(product);
-}
+        return convertToResponse(savedProduct);
+    }
 
-// =========================================================
-// UPDATE PRODUCT
-// =========================================================
+    // =========================================================
+    // GET ALL PRODUCTS
+    // =========================================================
 
-public ProductResponse updateProduct(
-        Long id,
-        ProductRequest request,
-        String vendorEmail) {
+    public List<ProductResponse> getAllProducts() {
 
-    Product product =
-            productRepository.findById(id)
-                    .orElseThrow(() ->
-                            new RuntimeException(
-                                    "Product not found"
-                            )
-                    );
+        return productRepository.findAll()
+                .stream()
+                .map(this::convertToResponse)
+                .toList();
+    }
 
-    if (!product.getVendorEmail()
-            .equals(vendorEmail)) {
+    // =========================================================
+    // GET PRODUCTS OF A PARTICULAR VENDOR
+    // =========================================================
 
-        throw new RuntimeException(
-                "You are not allowed to update this product"
+    public List<ProductResponse> getVendorProducts(
+            String vendorEmail) {
+
+        return productRepository
+                .findByVendorEmail(vendorEmail)
+                .stream()
+                .map(this::convertToResponse)
+                .toList();
+    }
+
+    // =========================================================
+    // GET PRODUCT BY ID
+    // =========================================================
+
+    public ProductResponse getProductById(Long id) {
+
+        Product product =
+                productRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Product not found"
+                                )
+                        );
+
+        return convertToResponse(product);
+    }
+
+    // =========================================================
+    // UPDATE PRODUCT
+    // =========================================================
+
+    public ProductResponse updateProduct(
+            Long id,
+            ProductRequest request,
+            String vendorEmail) {
+
+        Product product =
+                productRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Product not found"
+                                )
+                        );
+
+        if (product.getVendorEmail() == null ||
+                !product.getVendorEmail()
+                        .equalsIgnoreCase(vendorEmail)) {
+
+            throw new RuntimeException(
+                    "You are not allowed to update this product"
+            );
+        }
+
+        BigDecimal originalPrice =
+                request.getOriginalPrice();
+
+        BigDecimal discountPercentage =
+                request.getDiscountPercentage();
+
+        BigDecimal discountAmount =
+                originalPrice
+                        .multiply(discountPercentage)
+                        .divide(
+                                BigDecimal.valueOf(100),
+                                2,
+                                RoundingMode.HALF_UP
+                        );
+
+        BigDecimal finalPrice =
+                originalPrice
+                        .subtract(discountAmount)
+                        .setScale(2, RoundingMode.HALF_UP);
+
+        product.setName(request.getName());
+        product.setCategory(request.getCategory());
+        product.setBrand(request.getBrand());
+        product.setDescription(request.getDescription());
+        product.setOriginalPrice(originalPrice);
+        product.setDiscountPercentage(discountPercentage);
+        product.setPrice(finalPrice);
+        product.setQuantity(
+                request.getQuantity() == null
+                        ? 0
+                        : request.getQuantity()
+        );
+        product.setImageUrl(request.getImageUrl());
+
+        Product updatedProduct =
+                productRepository.save(product);
+
+        // Update inventory
+        Inventory inventory =
+                inventoryRepository
+                        .findByProductId(id)
+                        .orElseGet(() -> {
+
+                            Inventory newInventory =
+                                    new Inventory();
+
+                            newInventory.setProduct(
+                                    updatedProduct
+                            );
+
+                            newInventory.setReservedQuantity(0);
+
+                            newInventory.setLastUpdated(
+                                    LocalDateTime.now()
+                            );
+
+                            return newInventory;
+                        });
+
+        int quantity =
+                updatedProduct.getQuantity() == null
+                        ? 0
+                        : updatedProduct.getQuantity();
+
+        inventory.setQuantity(quantity);
+
+        int reserved =
+                inventory.getReservedQuantity() == null
+                        ? 0
+                        : inventory.getReservedQuantity();
+
+        inventory.setAvailableQuantity(
+                Math.max(
+                        0,
+                        quantity - reserved
+                )
+        );
+
+        inventory.setLastUpdated(
+                LocalDateTime.now()
+        );
+
+        inventoryRepository.save(inventory);
+
+        return convertToResponse(updatedProduct);
+    }
+
+    // =========================================================
+    // DELETE PRODUCT BY VENDOR
+    // =========================================================
+
+    public void deleteProduct(
+            Long id,
+            String vendorEmail) {
+
+        Product product =
+                productRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Product not found"
+                                )
+                        );
+
+        if (product.getVendorEmail() == null ||
+                !product.getVendorEmail()
+                        .equalsIgnoreCase(vendorEmail)) {
+
+            throw new RuntimeException(
+                    "You are not allowed to delete this product"
+            );
+        }
+
+        inventoryRepository
+                .findByProductId(id)
+                .ifPresent(inventory ->
+                        inventoryRepository.delete(inventory)
+                );
+
+        productRepository.delete(product);
+    }
+
+    // =========================================================
+    // DELETE PRODUCT BY ADMIN
+    // =========================================================
+
+    public void deleteProductByAdmin(Long id) {
+
+        Product product =
+                productRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Product not found"
+                                )
+                        );
+
+        inventoryRepository
+                .findByProductId(id)
+                .ifPresent(inventory ->
+                        inventoryRepository.delete(inventory)
+                );
+
+        productRepository.delete(product);
+    }
+
+    // =========================================================
+    // SEARCH PRODUCTS BY NAME
+    // =========================================================
+
+    public List<ProductResponse> searchProducts(
+            String name) {
+
+        return productRepository
+                .findByNameContainingIgnoreCase(name)
+                .stream()
+                .map(this::convertToResponse)
+                .toList();
+    }
+
+    // =========================================================
+    // SEARCH PRODUCTS BY CATEGORY
+    // =========================================================
+
+    public List<ProductResponse> searchByCategory(
+            String category) {
+
+        return productRepository
+                .findByCategoryContainingIgnoreCase(category)
+                .stream()
+                .map(this::convertToResponse)
+                .toList();
+    }
+
+    // =========================================================
+    // GET CURRENT STOCK
+    // =========================================================
+
+    public StockResponse getCurrentStock(
+            Long id,
+            String vendorEmail) {
+
+        Product product =
+                productRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Product not found"
+                                )
+                        );
+
+        if (product.getVendorEmail() == null ||
+                !product.getVendorEmail()
+                        .equalsIgnoreCase(vendorEmail)) {
+
+            throw new RuntimeException(
+                    "You are not allowed to view this product stock"
+            );
+        }
+
+        String status;
+
+        if (product.getQuantity() == null ||
+                product.getQuantity() == 0) {
+
+            status = "OUT OF STOCK";
+
+        } else {
+
+            status = "IN STOCK";
+        }
+
+        return new StockResponse(
+                product.getId(),
+                product.getName(),
+                product.getQuantity(),
+                status
         );
     }
 
-    product.setName(request.getName());
-    product.setCategory(request.getCategory());
-    product.setBrand(request.getBrand());
-    product.setDescription(request.getDescription());
-    product.setPrice(request.getPrice());
-    product.setQuantity(request.getQuantity());
-    product.setImageUrl(request.getImageUrl());
+    // =========================================================
+    // CONVERT ENTITY → RESPONSE DTO
+    // =========================================================
 
-    Product updatedProduct =
-            productRepository.save(product);
+    private ProductResponse convertToResponse(
+            Product product) {
 
-    return convertToResponse(updatedProduct);
-}
-
-// =========================================================
-// DELETE PRODUCT BY VENDOR
-// =========================================================
-
-public void deleteProduct(
-        Long id,
-        String vendorEmail) {
-
-    Product product =
-            productRepository.findById(id)
-                    .orElseThrow(() ->
-                            new RuntimeException(
-                                    "Product not found"
-                            )
-                    );
-
-    if (!product.getVendorEmail()
-            .equals(vendorEmail)) {
-
-        throw new RuntimeException(
-                "You are not allowed to delete this product"
+        return new ProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getCategory(),
+                product.getBrand(),
+                product.getDescription(),
+                product.getOriginalPrice(),
+                product.getDiscountPercentage(),
+                product.getPrice(),
+                product.getQuantity(),
+                product.getImageUrl(),
+                product.getVendorEmail()
         );
     }
-
-    productRepository.delete(product);
-}
-
-// =========================================================
-// DELETE PRODUCT BY ADMIN
-// =========================================================
-
-public void deleteProductByAdmin(Long id) {
-
-    Product product =
-            productRepository.findById(id)
-                    .orElseThrow(() ->
-                            new RuntimeException(
-                                    "Product not found"
-                            )
-                    );
-
-    productRepository.delete(product);
-}
-
-// =========================================================
-// SEARCH PRODUCTS BY NAME
-// =========================================================
-
-public List<ProductResponse> searchProducts(
-        String name) {
-
-    return productRepository
-            .findByNameContainingIgnoreCase(name)
-            .stream()
-            .map(this::convertToResponse)
-            .toList();
-}
-
-// =========================================================
-// SEARCH PRODUCTS BY CATEGORY
-// =========================================================
-
-public List<ProductResponse> searchByCategory(
-        String category) {
-
-    return productRepository
-            .findByCategoryContainingIgnoreCase(category)
-            .stream()
-            .map(this::convertToResponse)
-            .toList();
-}
-
-// =========================================================
-// GET CURRENT STOCK
-// =========================================================
-
-public StockResponse getCurrentStock(
-        Long id,
-        String vendorEmail) {
-
-    Product product =
-            productRepository.findById(id)
-                    .orElseThrow(() ->
-                            new RuntimeException(
-                                    "Product not found"
-                            )
-                    );
-
-    if (!product.getVendorEmail()
-            .equals(vendorEmail)) {
-
-        throw new RuntimeException(
-                "You are not allowed to view this product stock"
-        );
-    }
-
-    String status;
-
-    if (product.getQuantity() == null
-            || product.getQuantity() == 0) {
-
-        status = "OUT OF STOCK";
-
-    } else {
-
-        status = "IN STOCK";
-    }
-
-    return new StockResponse(
-            product.getId(),
-            product.getName(),
-            product.getQuantity(),
-            status
-    );
-}
-
-// =========================================================
-// CONVERT ENTITY → RESPONSE DTO
-// =========================================================
-
-private ProductResponse convertToResponse(
-        Product product) {
-
-    return new ProductResponse(
-            product.getId(),
-            product.getName(),
-            product.getCategory(),
-            product.getBrand(),
-            product.getDescription(),
-            product.getPrice(),
-            product.getQuantity(),
-            product.getImageUrl(),
-            product.getVendorEmail()
-    );
-}
-
-
 }

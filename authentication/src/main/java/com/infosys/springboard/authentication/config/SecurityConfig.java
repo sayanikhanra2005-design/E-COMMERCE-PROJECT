@@ -30,7 +30,6 @@ public class SecurityConfig {
             HttpSecurity http) throws Exception {
 
         http
-
                 // =====================================================
                 // CSRF
                 // =====================================================
@@ -44,7 +43,7 @@ public class SecurityConfig {
                 .cors(cors -> {})
 
                 // =====================================================
-                // SESSION MANAGEMENT
+                // SESSION
                 // =====================================================
 
                 .sessionManagement(session ->
@@ -58,6 +57,14 @@ public class SecurityConfig {
                 // =====================================================
 
                 .authorizeHttpRequests(auth -> auth
+
+                        // =================================================
+                        // BACKEND CONNECTION TEST
+                        // =================================================
+
+                        .requestMatchers(
+                                "/test-connection"
+                        ).permitAll()
 
                         // =================================================
                         // PUBLIC AUTHENTICATION
@@ -103,7 +110,7 @@ public class SecurityConfig {
                         ).hasRole("WAREHOUSE_STAFF")
 
                         // =================================================
-                        // ADMIN COUPON CREATION
+                        // ADMIN COUPONS
                         // =================================================
 
                         .requestMatchers(
@@ -111,27 +118,15 @@ public class SecurityConfig {
                                 "/coupons"
                         ).hasRole("ADMINISTRATOR")
 
-                        // =================================================
-                        // ADMIN COUPON UPDATE
-                        // =================================================
-
                         .requestMatchers(
                                 HttpMethod.PUT,
                                 "/coupons/**"
                         ).hasRole("ADMINISTRATOR")
 
-                        // =================================================
-                        // ADMIN COUPON DELETE
-                        // =================================================
-
                         .requestMatchers(
                                 HttpMethod.DELETE,
                                 "/coupons/**"
                         ).hasRole("ADMINISTRATOR")
-
-                        // =================================================
-                        // ADMIN COUPON VIEW
-                        // =================================================
 
                         .requestMatchers(
                                 HttpMethod.GET,
@@ -163,7 +158,6 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-
         return new BCryptPasswordEncoder();
     }
 

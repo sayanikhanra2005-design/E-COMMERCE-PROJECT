@@ -10,8 +10,8 @@ function Login() {
 
     try {
       const response = await api.post("/auth/login", {
-        email: email,
-        password: password,
+        email,
+        password,
       });
 
       console.log("Login successful:", response.data);
@@ -20,14 +20,13 @@ function Login() {
       localStorage.setItem("token", response.data.token);
 
       alert("Login successful!");
-
     } catch (error) {
       console.error("Login failed:", error);
 
       if (error.response) {
         alert(
           error.response.data?.message ||
-          "Invalid email or password"
+            "Invalid email or password"
         );
       } else {
         alert("Cannot connect to backend");
@@ -40,7 +39,6 @@ function Login() {
       <h2>Login</h2>
 
       <form onSubmit={handleLogin}>
-
         <input
           type="email"
           placeholder="Enter your email"
@@ -66,7 +64,6 @@ function Login() {
         <button type="submit">
           Login
         </button>
-
       </form>
     </div>
   );

@@ -1,34 +1,29 @@
 import axios from "axios";
 
-// Determine API base URL:
-// 1. Explicit environment variable (e.g., VITE_API_URL from Vercel or .env)
-// 2. Dynamically infer from the current browser host on port 8080
-// 3. Fallback to http://16.16.78.80:8080
-const getBaseUrl = () => {
-    if (import.meta.env.VITE_API_URL) {
-        return import.meta.env.VITE_API_URL.replace(/\/+$/, "");
-    }
-    if (typeof window !== "undefined" && window.location && window.location.hostname) {
-        const protocol = window.location.protocol || "http:";
-        const host = window.location.hostname;
-        return `${protocol}//${host}:8080`;
-    }
-    return "http://16.16.78.80:8080";
-};
-
 const api = axios.create({
-    baseURL: getBaseUrl(),
+    baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080",
     headers: {
         "Content-Type": "application/json",
     },
 });
 
-// Automatically send JWT with every request
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem("token");
 
+        console.log("=================================");
+        console.log("SHOPSTACK API REQUEST");
+        console.log("Method:", config.method?.toUpperCase());
+        console.log("URL:", config.baseURL + config.url);
+        console.log("TOKEN EXISTS:", !!token);
+        console.log(
+            "TOKEN LENGTH:",
+            token ? token.length : 0
+        );
+        console.log("=================================");
+
         if (token) {
+            config.headers = config.headers || {};
             config.headers.Authorization = `Bearer ${token}`;
         }
 

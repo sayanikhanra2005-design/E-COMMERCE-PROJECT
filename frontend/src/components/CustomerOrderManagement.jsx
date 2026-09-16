@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import "./CustomerOrderManagement.css";
 
 function CustomerOrderManagement() {
@@ -15,7 +15,6 @@ function CustomerOrderManagement() {
     // =========================================================
 
     const getFriendlyError = (err, defaultMessage) => {
-
         if (!err.response) {
             return "Unable to connect to the server. Please check your connection and try again.";
         }
@@ -27,8 +26,7 @@ function CustomerOrderManagement() {
             err.response?.data?.error ||
             "";
 
-        const message =
-            String(backendMessage).toLowerCase();
+        const message = String(backendMessage).toLowerCase();
 
         if (status === 401) {
             return "Your session has expired. Please login again.";
@@ -43,7 +41,6 @@ function CustomerOrderManagement() {
         }
 
         if (status === 400) {
-
             if (
                 message.includes("cancel") ||
                 message.includes("cannot")
@@ -58,9 +55,7 @@ function CustomerOrderManagement() {
                 return "This order is not eligible for return.";
             }
 
-            if (
-                message.includes("refund")
-            ) {
+            if (message.includes("refund")) {
                 return "Refund could not be processed for this order.";
             }
 
@@ -74,10 +69,7 @@ function CustomerOrderManagement() {
             return "Server error. Please try again later.";
         }
 
-        return (
-            backendMessage ||
-            defaultMessage
-        );
+        return backendMessage || defaultMessage;
     };
 
     // =========================================================
@@ -85,51 +77,31 @@ function CustomerOrderManagement() {
     // =========================================================
 
     const loadOrders = async (showLoader = true) => {
-
         try {
-
             if (showLoader) {
                 setLoading(true);
             }
 
             setError("");
+            setActionError("");
 
-            const token =
-                localStorage.getItem("token");
+            const token = localStorage.getItem("token");
 
             if (!token) {
-
-                setError(
-                    "Please login as Customer."
-                );
-
+                setError("Please login as Customer.");
                 setLoading(false);
-
                 return;
             }
 
-            const response = await axios.get(
-                "http://localhost:8080/customer/orders",
-                {
-                    headers: {
-                        Authorization:
-                            `Bearer ${token}`
-                    }
-                }
-            );
+            const response = await api.get("/customer/orders");
 
             if (Array.isArray(response.data)) {
                 setOrders(response.data);
             } else {
                 setOrders([]);
             }
-
         } catch (err) {
-
-            console.error(
-                "Unable to load orders:",
-                err
-            );
+            console.error("Unable to load orders:", err);
 
             setError(
                 getFriendlyError(
@@ -137,9 +109,7 @@ function CustomerOrderManagement() {
                     "Unable to load your orders."
                 )
             );
-
         } finally {
-
             setLoading(false);
         }
     };
@@ -149,8 +119,7 @@ function CustomerOrderManagement() {
     // =========================================================
 
     const handleCancelOrder = async (orderId) => {
-
-        if (processingOrderId) {
+        if (processingOrderId !== null) {
             return;
         }
 
@@ -163,32 +132,22 @@ function CustomerOrderManagement() {
         }
 
         try {
-
             setProcessingOrderId(orderId);
             setActionError("");
             setSuccessMessage("");
 
-            const token =
-                localStorage.getItem("token");
+            const token = localStorage.getItem("token");
 
             if (!token) {
-
                 setActionError(
                     "Your session has expired. Please login again."
                 );
-
                 return;
             }
 
-            await axios.put(
-                `http://localhost:8080/customer/orders/${orderId}/cancel`,
-                {},
-                {
-                    headers: {
-                        Authorization:
-                            `Bearer ${token}`
-                    }
-                }
+            await api.put(
+                `/customer/orders/${orderId}/cancel`,
+                {}
             );
 
             setSuccessMessage(
@@ -196,13 +155,8 @@ function CustomerOrderManagement() {
             );
 
             await loadOrders(false);
-
         } catch (err) {
-
-            console.error(
-                "Cancel order error:",
-                err
-            );
+            console.error("Cancel order error:", err);
 
             setActionError(
                 getFriendlyError(
@@ -210,9 +164,7 @@ function CustomerOrderManagement() {
                     "Unable to cancel the order."
                 )
             );
-
         } finally {
-
             setProcessingOrderId(null);
         }
     };
@@ -222,8 +174,7 @@ function CustomerOrderManagement() {
     // =========================================================
 
     const handleReturnOrder = async (orderId) => {
-
-        if (processingOrderId) {
+        if (processingOrderId !== null) {
             return;
         }
 
@@ -236,42 +187,28 @@ function CustomerOrderManagement() {
         }
 
         if (!reason.trim()) {
-
-            setActionError(
-                "Please provide a return reason."
-            );
-
+            setActionError("Please provide a return reason.");
             return;
         }
 
         try {
-
             setProcessingOrderId(orderId);
             setActionError("");
             setSuccessMessage("");
 
-            const token =
-                localStorage.getItem("token");
+            const token = localStorage.getItem("token");
 
             if (!token) {
-
                 setActionError(
                     "Your session has expired. Please login again."
                 );
-
                 return;
             }
 
-            await axios.put(
-                `http://localhost:8080/customer/orders/${orderId}/return`,
+            await api.put(
+                `/customer/orders/${orderId}/return`,
                 {
-                    reason: reason.trim()
-                },
-                {
-                    headers: {
-                        Authorization:
-                            `Bearer ${token}`
-                    }
+                    reason: reason.trim(),
                 }
             );
 
@@ -280,13 +217,8 @@ function CustomerOrderManagement() {
             );
 
             await loadOrders(false);
-
         } catch (err) {
-
-            console.error(
-                "Return order error:",
-                err
-            );
+            console.error("Return order error:", err);
 
             setActionError(
                 getFriendlyError(
@@ -294,26 +226,28 @@ function CustomerOrderManagement() {
                     "Unable to submit the return request."
                 )
             );
-
         } finally {
-
             setProcessingOrderId(null);
         }
     };
 
     // =========================================================
-    // LOAD ON PAGE OPEN
+    // LOAD ORDERS WHEN PAGE OPENS
     // =========================================================
+    //
+    // IMPORTANT:
+    // We use setTimeout here so the state updates inside
+    // loadOrders() do not happen synchronously inside the effect.
+    //
 
     useEffect(() => {
-
         const timer = setTimeout(() => {
             loadOrders(false);
         }, 0);
 
-        return () =>
+        return () => {
             clearTimeout(timer);
-
+        };
     }, []);
 
     // =========================================================
@@ -321,11 +255,7 @@ function CustomerOrderManagement() {
     // =========================================================
 
     const getStatusClass = (status) => {
-
-        switch (
-            status?.toUpperCase()
-        ) {
-
+        switch (status?.toUpperCase()) {
             case "PENDING":
                 return "status-pending";
 
@@ -351,11 +281,7 @@ function CustomerOrderManagement() {
     // =========================================================
 
     const getStatusStep = (status) => {
-
-        switch (
-            status?.toUpperCase()
-        ) {
-
+        switch (status?.toUpperCase()) {
             case "PENDING":
                 return 1;
 
@@ -378,21 +304,17 @@ function CustomerOrderManagement() {
     // =========================================================
 
     const formatDate = (date) => {
-
         if (!date) {
             return "N/A";
         }
 
-        return new Date(date).toLocaleString(
-            "en-IN",
-            {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit"
-            }
-        );
+        return new Date(date).toLocaleString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
     };
 
     // =========================================================
@@ -400,17 +322,13 @@ function CustomerOrderManagement() {
     // =========================================================
 
     const calculateItemsCount = (items) => {
-
         if (!Array.isArray(items)) {
             return 0;
         }
 
         return items.reduce(
             (total, item) =>
-                total +
-                Number(
-                    item.quantity || 0
-                ),
+                total + Number(item.quantity || 0),
             0
         );
     };
@@ -420,21 +338,15 @@ function CustomerOrderManagement() {
     // =========================================================
 
     if (loading) {
-
         return (
-
             <div className="orders-page">
-
                 <div className="orders-loading">
-
                     <div className="loading-spinner"></div>
 
                     <p>
                         Loading your orders...
                     </p>
-
                 </div>
-
             </div>
         );
     }
@@ -444,7 +356,6 @@ function CustomerOrderManagement() {
     // =========================================================
 
     return (
-
         <div className="orders-page">
 
             {/* PAGE HEADER */}
@@ -458,7 +369,6 @@ function CustomerOrderManagement() {
                     </span>
 
                     <div>
-
                         <h1>
                             My Orders
                         </h1>
@@ -466,19 +376,14 @@ function CustomerOrderManagement() {
                         <p>
                             View your orders and track their status.
                         </p>
-
                     </div>
 
                 </div>
 
                 <button
                     className="refresh-orders-btn"
-                    onClick={() =>
-                        loadOrders(true)
-                    }
-                    disabled={
-                        processingOrderId !== null
-                    }
+                    onClick={() => loadOrders(true)}
+                    disabled={processingOrderId !== null}
                 >
                     ↻ Refresh
                 </button>
@@ -488,7 +393,6 @@ function CustomerOrderManagement() {
             {/* LOAD ERROR */}
 
             {error && (
-
                 <div className="orders-error">
 
                     <span>
@@ -505,7 +409,6 @@ function CustomerOrderManagement() {
             {/* ACTION ERROR */}
 
             {actionError && (
-
                 <div className="orders-error">
 
                     <span>
@@ -522,7 +425,6 @@ function CustomerOrderManagement() {
             {/* SUCCESS */}
 
             {successMessage && (
-
                 <div className="orders-success">
 
                     <span>
@@ -538,26 +440,24 @@ function CustomerOrderManagement() {
 
             {/* EMPTY */}
 
-            {!error &&
-                orders.length === 0 && (
+            {!error && orders.length === 0 && (
+                <div className="empty-orders">
 
-                    <div className="empty-orders">
-
-                        <div className="empty-orders-icon">
-                            🛍️
-                        </div>
-
-                        <h2>
-                            No Orders Yet
-                        </h2>
-
-                        <p>
-                            You haven't placed any orders yet.
-                            Start shopping to see your orders here.
-                        </p>
-
+                    <div className="empty-orders-icon">
+                        🛍️
                     </div>
-                )}
+
+                    <h2>
+                        No Orders Yet
+                    </h2>
+
+                    <p>
+                        You haven't placed any orders yet.
+                        Start shopping to see your orders here.
+                    </p>
+
+                </div>
+            )}
 
             {/* ORDERS */}
 
@@ -566,14 +466,10 @@ function CustomerOrderManagement() {
                 {orders.map((order) => {
 
                     const currentStep =
-                        getStatusStep(
-                            order.status
-                        );
+                        getStatusStep(order.status);
 
                     const itemCount =
-                        calculateItemsCount(
-                            order.items
-                        );
+                        calculateItemsCount(order.items);
 
                     const orderStatus =
                         order.status?.toUpperCase();
@@ -586,8 +482,7 @@ function CustomerOrderManagement() {
                         orderStatus === "DELIVERED";
 
                     const isProcessing =
-                        processingOrderId ===
-                        order.id;
+                        processingOrderId === order.id;
 
                     return (
 
@@ -616,13 +511,9 @@ function CustomerOrderManagement() {
                                 </div>
 
                                 <div
-                                    className={
-                                        `order-status ${
-                                            getStatusClass(
-                                                order.status
-                                            )
-                                        }`
-                                    }
+                                    className={`order-status ${getStatusClass(
+                                        order.status
+                                    )}`}
                                 >
                                     {order.status}
                                 </div>
@@ -640,7 +531,6 @@ function CustomerOrderManagement() {
                                     </span>
 
                                     <div>
-
                                         <small>
                                             Items
                                         </small>
@@ -648,7 +538,6 @@ function CustomerOrderManagement() {
                                         <strong>
                                             {itemCount}
                                         </strong>
-
                                     </div>
 
                                 </div>
@@ -660,7 +549,6 @@ function CustomerOrderManagement() {
                                     </span>
 
                                     <div>
-
                                         <small>
                                             Total Amount
                                         </small>
@@ -668,11 +556,9 @@ function CustomerOrderManagement() {
                                         <strong>
                                             ₹
                                             {Number(
-                                                order.totalAmount ||
-                                                0
+                                                order.totalAmount || 0
                                             ).toFixed(2)}
                                         </strong>
-
                                     </div>
 
                                 </div>
@@ -684,7 +570,6 @@ function CustomerOrderManagement() {
                                     </span>
 
                                     <div>
-
                                         <small>
                                             Status
                                         </small>
@@ -692,7 +577,6 @@ function CustomerOrderManagement() {
                                         <strong>
                                             {order.status}
                                         </strong>
-
                                     </div>
 
                                 </div>
@@ -720,14 +604,9 @@ function CustomerOrderManagement() {
 
                                 <div className="order-products">
 
-                                    {Array.isArray(
-                                        order.items
-                                    ) &&
+                                    {Array.isArray(order.items) &&
                                         order.items.map(
-                                            (
-                                                item,
-                                                index
-                                            ) => (
+                                            (item, index) => (
 
                                                 <div
                                                     className="order-product"
@@ -752,9 +631,7 @@ function CustomerOrderManagement() {
                                                                     "Product"
                                                                 }
                                                                 className="product-image"
-                                                                onError={(
-                                                                    e
-                                                                ) => {
+                                                                onError={(e) => {
 
                                                                     e.currentTarget.style.display =
                                                                         "none";
@@ -763,10 +640,10 @@ function CustomerOrderManagement() {
                                                                         e.currentTarget
                                                                             .nextElementSibling
                                                                     ) {
-
                                                                         e.currentTarget.nextElementSibling.style.display =
                                                                             "flex";
                                                                     }
+
                                                                 }}
                                                             />
 
@@ -778,7 +655,7 @@ function CustomerOrderManagement() {
                                                                 display:
                                                                     item.imageUrl
                                                                         ? "none"
-                                                                        : "flex"
+                                                                        : "flex",
                                                             }}
                                                         >
                                                             🛒
@@ -817,7 +694,7 @@ function CustomerOrderManagement() {
                                                                     ₹
                                                                     {Number(
                                                                         item.price ||
-                                                                        0
+                                                                            0
                                                                     ).toFixed(
                                                                         2
                                                                     )}
@@ -849,15 +726,14 @@ function CustomerOrderManagement() {
                                                             ₹
                                                             {Number(
                                                                 item.subtotal ||
-                                                                0
-                                                            ).toFixed(
-                                                                2
-                                                            )}
+                                                                    0
+                                                            ).toFixed(2)}
                                                         </strong>
 
                                                     </div>
 
                                                 </div>
+
                                             )
                                         )}
 
@@ -876,19 +752,15 @@ function CustomerOrderManagement() {
                                 <strong>
                                     ₹
                                     {Number(
-                                        order.totalAmount ||
-                                        0
+                                        order.totalAmount || 0
                                     ).toFixed(2)}
                                 </strong>
 
                             </div>
 
-                            {/* =================================================
-                                ORDER ACTIONS
-                            ================================================= */}
+                            {/* ORDER ACTIONS */}
 
-                            {(canCancel ||
-                                canReturn) && (
+                            {(canCancel || canReturn) && (
 
                                 <div
                                     className="order-actions"
@@ -896,7 +768,7 @@ function CustomerOrderManagement() {
                                         display: "flex",
                                         gap: "10px",
                                         marginTop: "15px",
-                                        flexWrap: "wrap"
+                                        flexWrap: "wrap",
                                     }}
                                 >
 
@@ -910,19 +782,22 @@ function CustomerOrderManagement() {
                                                 )
                                             }
                                             disabled={
-                                                processingOrderId !== null
+                                                processingOrderId !==
+                                                null
                                             }
                                             style={{
                                                 cursor:
-                                                    processingOrderId !== null
+                                                    processingOrderId !==
+                                                    null
                                                         ? "not-allowed"
-                                                        : "pointer"
+                                                        : "pointer",
                                             }}
                                         >
                                             {isProcessing
                                                 ? "Processing..."
                                                 : "Cancel Order"}
                                         </button>
+
                                     )}
 
                                     {canReturn && (
@@ -935,58 +810,62 @@ function CustomerOrderManagement() {
                                                 )
                                             }
                                             disabled={
-                                                processingOrderId !== null
+                                                processingOrderId !==
+                                                null
                                             }
                                             style={{
                                                 cursor:
-                                                    processingOrderId !== null
+                                                    processingOrderId !==
+                                                    null
                                                         ? "not-allowed"
-                                                        : "pointer"
+                                                        : "pointer",
                                             }}
                                         >
                                             {isProcessing
                                                 ? "Processing..."
                                                 : "Request Return"}
                                         </button>
+
                                     )}
 
                                 </div>
+
                             )}
 
                             {/* RETURN STATUS */}
 
                             {order.returnStatus &&
-                                order.returnStatus !==
-                                    "N/A" && (
+                                order.returnStatus !== "N/A" && (
 
-                                <div
-                                    style={{
-                                        marginTop: "12px"
-                                    }}
-                                >
+                                    <div
+                                        style={{
+                                            marginTop: "12px",
+                                        }}
+                                    >
 
-                                    <strong>
-                                        Return Status:
-                                    </strong>{" "}
+                                        <strong>
+                                            Return Status:
+                                        </strong>{" "}
 
-                                    {order.returnStatus}
+                                        {order.returnStatus}
 
-                                    {order.returnReason && (
+                                        {order.returnReason && (
 
-                                        <span>
-                                            {" "}
-                                            —{" "}
-                                            {order.returnReason}
-                                        </span>
-                                    )}
+                                            <span>
+                                                {" "}
+                                                —{" "}
+                                                {order.returnReason}
+                                            </span>
 
-                                </div>
-                            )}
+                                        )}
+
+                                    </div>
+
+                                )}
 
                             {/* TRACKING */}
 
-                            {orderStatus !==
-                                "CANCELLED" && (
+                            {orderStatus !== "CANCELLED" && (
 
                                 <div className="order-tracking">
 
@@ -1007,11 +886,11 @@ function CustomerOrderManagement() {
                                             <div
                                                 className="tracking-line-filled"
                                                 style={{
-                                                    width:
-                                                        `${(
-                                                            (currentStep - 1) /
-                                                            3
-                                                        ) * 100}%`
+                                                    width: `${
+                                                        ((currentStep - 1) /
+                                                            3) *
+                                                        100
+                                                    }%`,
                                                 }}
                                             ></div>
 
@@ -1023,14 +902,12 @@ function CustomerOrderManagement() {
 
                                             <div
                                                 className={
-                                                    currentStep >=
-                                                    1
+                                                    currentStep >= 1
                                                         ? "tracking-circle active"
                                                         : "tracking-circle"
                                                 }
                                             >
-                                                {currentStep >
-                                                1
+                                                {currentStep > 1
                                                     ? "✓"
                                                     : "1"}
                                             </div>
@@ -1047,14 +924,12 @@ function CustomerOrderManagement() {
 
                                             <div
                                                 className={
-                                                    currentStep >=
-                                                    2
+                                                    currentStep >= 2
                                                         ? "tracking-circle active"
                                                         : "tracking-circle"
                                                 }
                                             >
-                                                {currentStep >
-                                                2
+                                                {currentStep > 2
                                                     ? "✓"
                                                     : "2"}
                                             </div>
@@ -1071,14 +946,12 @@ function CustomerOrderManagement() {
 
                                             <div
                                                 className={
-                                                    currentStep >=
-                                                    3
+                                                    currentStep >= 3
                                                         ? "tracking-circle active"
                                                         : "tracking-circle"
                                                 }
                                             >
-                                                {currentStep >
-                                                3
+                                                {currentStep > 3
                                                     ? "✓"
                                                     : "3"}
                                             </div>
@@ -1095,14 +968,12 @@ function CustomerOrderManagement() {
 
                                             <div
                                                 className={
-                                                    currentStep >=
-                                                    4
+                                                    currentStep >= 4
                                                         ? "tracking-circle active"
                                                         : "tracking-circle"
                                                 }
                                             >
-                                                {currentStep >=
-                                                4
+                                                {currentStep >= 4
                                                     ? "✓"
                                                     : "4"}
                                             </div>
@@ -1116,21 +987,21 @@ function CustomerOrderManagement() {
                                     </div>
 
                                 </div>
+
                             )}
 
                             {/* CANCELLED */}
 
-                            {orderStatus ===
-                                "CANCELLED" && (
+                            {orderStatus === "CANCELLED" && (
 
                                 <div className="cancelled-order">
-
                                     ❌ This order has been cancelled.
-
                                 </div>
+
                             )}
 
                         </div>
+
                     );
                 })}
 

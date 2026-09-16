@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import "./VendorProductManagement.css";
 
 function VendorProductManagement() {
@@ -14,29 +14,18 @@ function VendorProductManagement() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "",
-    brand: "",
-    description: "",
-    price: "",
-    quantity: "",
-    imageUrl: "",
-  });
-
-  // =========================================================
-  // EMPTY FORM
-  // =========================================================
-
   const emptyForm = {
     name: "",
     category: "",
     brand: "",
     description: "",
-    price: "",
+    originalPrice: "",
+    discountPercentage: "",
     quantity: "",
     imageUrl: "",
   };
+
+  const [formData, setFormData] = useState(emptyForm);
 
   // =========================================================
   // GET TOKEN
@@ -48,7 +37,6 @@ function VendorProductManagement() {
 
   // =========================================================
   // FETCH PRODUCTS
-  // Used after ADD / UPDATE / DELETE
   // =========================================================
 
   const fetchProducts = async () => {
@@ -60,14 +48,7 @@ function VendorProductManagement() {
     }
 
     try {
-      const response = await axios.get(
-        "http://localhost:8080/vendor/products",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await api.get("/vendor/products");
 
       setProducts(
         Array.isArray(response.data)
@@ -78,6 +59,8 @@ function VendorProductManagement() {
       setError("");
     } catch (err) {
       console.error("FETCH PRODUCTS ERROR:", err);
+      console.error("STATUS:", err.response?.status);
+      console.error("BACKEND RESPONSE:", err.response?.data);
 
       if (err.response?.status === 401) {
         setError(
@@ -101,25 +84,19 @@ function VendorProductManagement() {
     let cancelled = false;
 
     const loadProducts = async () => {
-      const token = localStorage.getItem("token");
+      const token = getToken();
 
       if (!token) {
         if (!cancelled) {
           setError("Please login first.");
           setLoading(false);
         }
+
         return;
       }
 
       try {
-        const response = await axios.get(
-          "http://localhost:8080/vendor/products",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await api.get("/vendor/products");
 
         if (!cancelled) {
           setProducts(
@@ -134,6 +111,16 @@ function VendorProductManagement() {
         console.error(
           "INITIAL PRODUCTS FETCH ERROR:",
           err
+        );
+
+        console.error(
+          "STATUS:",
+          err.response?.status
+        );
+
+        console.error(
+          "BACKEND RESPONSE:",
+          err.response?.data
         );
 
         if (!cancelled) {
@@ -158,10 +145,13 @@ function VendorProductManagement() {
       }
     };
 
-    loadProducts();
+    const timer = setTimeout(() => {
+      loadProducts();
+    }, 0);
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, []);
 
@@ -212,6 +202,72 @@ function VendorProductManagement() {
   };
 
   // =========================================================
+  // CALCULATE SELLING PRICE
+  // =========================================================
+
+  const calculateSellingPrice = () => {
+    const originalPrice = Number(
+      formData.originalPrice
+    );
+
+    const discountPercentage = Number(
+      formData.discountPercentage
+    );
+
+    if (
+      Number.isNaN(originalPrice) ||
+      originalPrice <= 0
+    ) {
+      return "";
+    }
+
+    if (
+      Number.isNaN(discountPercentage) ||
+      discountPercentage < 0 ||
+      discountPercentage > 100
+    ) {
+      return "";
+    }
+
+    const discountAmount =
+      (originalPrice * discountPercentage) / 100;
+
+    const sellingPrice =
+      originalPrice - discountAmount;
+
+    return sellingPrice.toFixed(2);
+  };
+
+  // =========================================================
+  // DISCOUNT AMOUNT
+  // =========================================================
+
+  const calculateDiscountAmount = () => {
+    const originalPrice = Number(
+      formData.originalPrice
+    );
+
+    const discountPercentage = Number(
+      formData.discountPercentage
+    );
+
+    if (
+      Number.isNaN(originalPrice) ||
+      originalPrice <= 0 ||
+      Number.isNaN(discountPercentage) ||
+      discountPercentage < 0 ||
+      discountPercentage > 100
+    ) {
+      return "";
+    }
+
+    return (
+      (originalPrice * discountPercentage) /
+      100
+    ).toFixed(2);
+  };
+
+  // =========================================================
   // VALIDATE FORM
   // =========================================================
 
@@ -237,12 +293,35 @@ function VendorProductManagement() {
     }
 
     if (
-      formData.price === "" ||
-      Number(formData.price) <= 0 ||
-      Number.isNaN(Number(formData.price))
+      formData.originalPrice === "" ||
+      Number(formData.originalPrice) <= 0 ||
+      Number.isNaN(Number(formData.originalPrice))
     ) {
       setError(
-        "Please enter a valid price greater than 0."
+        "Please enter a valid original price greater than 0."
+      );
+      return false;
+    }
+
+    if (
+      formData.discountPercentage === "" ||
+      Number(formData.discountPercentage) < 0 ||
+      Number(formData.discountPercentage) > 100 ||
+      Number.isNaN(
+        Number(formData.discountPercentage)
+      )
+    ) {
+      setError(
+        "Please enter a discount percentage between 0 and 100."
+      );
+      return false;
+    }
+
+    if (
+      Number(calculateSellingPrice()) <= 0
+    ) {
+      setError(
+        "Discounted selling price must be greater than 0."
       );
       return false;
     }
@@ -258,6 +337,15 @@ function VendorProductManagement() {
       return false;
     }
 
+    if (
+      !Number.isInteger(Number(formData.quantity))
+    ) {
+      setError(
+        "Stock quantity must be a whole number."
+      );
+      return false;
+    }
+
     return true;
   };
 
@@ -268,7 +356,10 @@ function VendorProductManagement() {
   const handleAddProduct = async (event) => {
     event.preventDefault();
 
+    console.log("===== ADD PRODUCT STARTED =====");
+
     if (saving) {
+      console.log("Already saving...");
       return;
     }
 
@@ -276,10 +367,17 @@ function VendorProductManagement() {
     setError("");
 
     if (!validateForm()) {
+      console.log("FORM VALIDATION FAILED");
       return;
     }
 
     const token = getToken();
+
+    console.log("TOKEN EXISTS:", !!token);
+    console.log(
+      "API URL:",
+      import.meta.env.VITE_API_URL
+    );
 
     if (!token) {
       setError("Please login first.");
@@ -291,32 +389,44 @@ function VendorProductManagement() {
       category: formData.category.trim(),
       brand: formData.brand.trim(),
       description: formData.description.trim(),
-      price: Number(formData.price),
+
+      originalPrice: Number(
+        formData.originalPrice
+      ),
+
+      discountPercentage: Number(
+        formData.discountPercentage
+      ),
+
+      price: Number(
+        calculateSellingPrice()
+      ),
+
       quantity: Number(formData.quantity),
+
       imageUrl: formData.imageUrl.trim(),
     };
 
     console.log(
-      "ADDING PRODUCT:",
+      "PRODUCT DATA:",
       productData
+    );
+
+    console.log(
+      "SENDING POST REQUEST TO:",
+      "/vendor/products"
     );
 
     try {
       setSaving(true);
 
-      const response = await axios.post(
-        "http://localhost:8080/vendor/products",
-        productData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await api.post(
+        "/vendor/products",
+        productData
       );
 
       console.log(
-        "PRODUCT CREATED:",
+        "PRODUCT CREATED SUCCESSFULLY:",
         response.data
       );
 
@@ -329,9 +439,14 @@ function VendorProductManagement() {
       setShowForm(false);
 
       await fetchProducts();
+
     } catch (err) {
       console.error(
-        "PRODUCT CREATION ERROR:",
+        "===== PRODUCT CREATION ERROR ====="
+      );
+
+      console.error(
+        "ERROR:",
         err
       );
 
@@ -345,15 +460,23 @@ function VendorProductManagement() {
         err.response?.data
       );
 
+      console.error(
+        "REQUEST:",
+        err.request
+      );
+
       if (err.response?.status === 401) {
         setError(
           "Your session has expired. Please login again."
         );
+
       } else if (err.response?.status === 403) {
         setError(
           "Access denied. Please login as an approved vendor."
         );
+
       } else if (err.response?.status === 400) {
+
         const backendMessage =
           err.response?.data?.message ||
           err.response?.data?.error;
@@ -362,19 +485,26 @@ function VendorProductManagement() {
           backendMessage ||
           "Invalid product details. Please check the form."
         );
+
       } else if (err.response?.status === 500) {
+
         setError(
           "Server error while adding the product. Check the Spring Boot terminal."
         );
+
       } else if (err.request) {
+
         setError(
-          "Backend is not responding. Make sure Spring Boot is running on port 8080."
+          "Backend is not responding. Make sure Spring Boot is running."
         );
+
       } else {
+
         setError(
           "Unable to add product."
         );
       }
+
     } finally {
       setSaving(false);
     }
@@ -392,16 +522,25 @@ function VendorProductManagement() {
       category: product.category || "",
       brand: product.brand || "",
       description: product.description || "",
-      price:
-        product.price !== null &&
-        product.price !== undefined
-          ? product.price
-          : "",
+
+      originalPrice:
+        product.originalPrice !== null &&
+        product.originalPrice !== undefined
+          ? product.originalPrice
+          : product.price || "",
+
+      discountPercentage:
+        product.discountPercentage !== null &&
+        product.discountPercentage !== undefined
+          ? product.discountPercentage
+          : 0,
+
       quantity:
         product.quantity !== null &&
         product.quantity !== undefined
           ? product.quantity
           : "",
+
       imageUrl: product.imageUrl || "",
     });
 
@@ -445,23 +584,30 @@ function VendorProductManagement() {
       category: formData.category.trim(),
       brand: formData.brand.trim(),
       description: formData.description.trim(),
-      price: Number(formData.price),
+
+      originalPrice: Number(
+        formData.originalPrice
+      ),
+
+      discountPercentage: Number(
+        formData.discountPercentage
+      ),
+
+      price: Number(
+        calculateSellingPrice()
+      ),
+
       quantity: Number(formData.quantity),
+
       imageUrl: formData.imageUrl.trim(),
     };
 
     try {
       setSaving(true);
 
-      const response = await axios.put(
-        `http://localhost:8080/vendor/products/${editingProduct.id}`,
-        productData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await api.put(
+        `/vendor/products/${editingProduct.id}`,
+        productData
       );
 
       console.log(
@@ -478,6 +624,7 @@ function VendorProductManagement() {
       setShowForm(false);
 
       await fetchProducts();
+
     } catch (err) {
       console.error(
         "PRODUCT UPDATE ERROR:",
@@ -495,14 +642,19 @@ function VendorProductManagement() {
       );
 
       if (err.response?.status === 401) {
+
         setError(
           "Your session has expired. Please login again."
         );
+
       } else if (err.response?.status === 403) {
+
         setError(
           "You are not allowed to update this product."
         );
+
       } else if (err.response?.status === 400) {
+
         const backendMessage =
           err.response?.data?.message ||
           err.response?.data?.error;
@@ -511,11 +663,14 @@ function VendorProductManagement() {
           backendMessage ||
           "Please check all product details."
         );
+
       } else {
+
         setError(
           "Unable to update product."
         );
       }
+
     } finally {
       setSaving(false);
     }
@@ -545,13 +700,8 @@ function VendorProductManagement() {
       setMessage("");
       setError("");
 
-      await axios.delete(
-        `http://localhost:8080/vendor/products/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      await api.delete(
+        `/vendor/products/${id}`
       );
 
       setMessage(
@@ -559,6 +709,7 @@ function VendorProductManagement() {
       );
 
       await fetchProducts();
+
     } catch (err) {
       console.error(
         "DELETE PRODUCT ERROR:",
@@ -566,14 +717,19 @@ function VendorProductManagement() {
       );
 
       if (err.response?.status === 401) {
+
         setError(
           "Your session has expired. Please login again."
         );
+
       } else if (err.response?.status === 403) {
+
         setError(
           "You are not allowed to delete this product."
         );
+
       } else {
+
         setError(
           "Unable to delete product."
         );
@@ -600,14 +756,14 @@ function VendorProductManagement() {
   return (
     <div className="vendor-products">
 
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
+      {/* HEADER */}
 
       <div className="product-header">
 
         <div>
-          <h2>My Products</h2>
+          <h2>
+            My Products
+          </h2>
 
           <p>
             Add and manage products available in your store.
@@ -632,9 +788,7 @@ function VendorProductManagement() {
 
       </div>
 
-      {/* =====================================================
-          SUCCESS MESSAGE
-      ===================================================== */}
+      {/* SUCCESS MESSAGE */}
 
       {message && (
         <div className="success-message">
@@ -642,9 +796,7 @@ function VendorProductManagement() {
         </div>
       )}
 
-      {/* =====================================================
-          ERROR MESSAGE
-      ===================================================== */}
+      {/* ERROR MESSAGE */}
 
       {error && (
         <div className="error-message">
@@ -652,9 +804,7 @@ function VendorProductManagement() {
         </div>
       )}
 
-      {/* =====================================================
-          ADD / EDIT FORM
-      ===================================================== */}
+      {/* ADD / EDIT FORM */}
 
       {showForm && (
         <div className="product-form-card">
@@ -662,6 +812,7 @@ function VendorProductManagement() {
           <div className="product-form-header">
 
             <div>
+
               <h3>
                 {editingProduct
                   ? "Edit Product"
@@ -673,6 +824,7 @@ function VendorProductManagement() {
                   ? "Update your product details below."
                   : "Enter the details of your new product."}
               </p>
+
             </div>
 
           </div>
@@ -751,24 +903,71 @@ function VendorProductManagement() {
 
               </div>
 
-              {/* PRICE */}
+              {/* ORIGINAL PRICE */}
 
               <div className="form-group">
 
-                <label htmlFor="product-price">
-                  Price
+                <label htmlFor="product-original-price">
+                  Original Price
                 </label>
 
                 <input
-                  id="product-price"
+                  id="product-original-price"
                   type="number"
-                  name="price"
-                  value={formData.price}
+                  name="originalPrice"
+                  value={formData.originalPrice}
                   onChange={handleChange}
-                  placeholder="Enter price"
+                  placeholder="Enter actual price"
                   min="0.01"
                   step="0.01"
                   required
+                />
+
+              </div>
+
+              {/* DISCOUNT */}
+
+              <div className="form-group">
+
+                <label htmlFor="product-discount">
+                  Discount (%)
+                </label>
+
+                <input
+                  id="product-discount"
+                  type="number"
+                  name="discountPercentage"
+                  value={formData.discountPercentage}
+                  onChange={handleChange}
+                  placeholder="Example: 10"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  required
+                />
+
+              </div>
+
+              {/* SELLING PRICE */}
+
+              <div className="form-group">
+
+                <label htmlFor="product-selling-price">
+                  Selling Price
+                </label>
+
+                <input
+                  id="product-selling-price"
+                  type="text"
+                  value={
+                    calculateSellingPrice()
+                      ? `₹${Number(
+                          calculateSellingPrice()
+                        ).toFixed(2)}`
+                      : ""
+                  }
+                  placeholder="Calculated automatically"
+                  readOnly
                 />
 
               </div>
@@ -836,9 +1035,56 @@ function VendorProductManagement() {
 
             </div>
 
+            {/* DISCOUNT PREVIEW */}
+
+            {formData.originalPrice !== "" &&
+              formData.discountPercentage !== "" &&
+              calculateSellingPrice() && (
+
+                <div
+                  style={{
+                    marginTop: "15px",
+                    padding: "15px",
+                    borderRadius: "8px",
+                    background: "#f5f7fb",
+                  }}
+                >
+
+                  <strong>
+                    Discount Preview
+                  </strong>
+
+                  <div
+                    style={{
+                      marginTop: "8px",
+                    }}
+                  >
+                    Original Price: ₹
+                    {Number(
+                      formData.originalPrice
+                    ).toFixed(2)}
+                  </div>
+
+                  <div>
+                    {Number(
+                      formData.discountPercentage
+                    ).toFixed(2)}
+                    % Discount: ₹
+                    {calculateDiscountAmount()}
+                  </div>
+
+                  <div>
+                    Selling Price: ₹
+                    {calculateSellingPrice()}
+                  </div>
+
+                </div>
+              )}
+
             {/* IMAGE PREVIEW */}
 
             {formData.imageUrl.trim() && (
+
               <div className="image-preview">
 
                 <img
@@ -925,9 +1171,7 @@ function VendorProductManagement() {
         </div>
       )}
 
-      {/* =====================================================
-          PRODUCT LIST
-      ===================================================== */}
+      {/* PRODUCT LIST */}
 
       <div className="product-list-card">
 
@@ -1023,10 +1267,55 @@ function VendorProductManagement() {
                     </td>
 
                     <td>
-                      ₹
-                      {Number(
-                        product.price || 0
-                      ).toFixed(2)}
+
+                      {product.discountPercentage > 0 && (
+
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#16a34a",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {Number(
+                            product.discountPercentage
+                          ).toFixed(2)}
+                          % OFF
+                        </div>
+
+                      )}
+
+                      {product.originalPrice &&
+                        Number(
+                          product.originalPrice
+                        ) >
+                          Number(
+                            product.price || 0
+                          ) && (
+
+                          <div
+                            style={{
+                              textDecoration:
+                                "line-through",
+                              color: "#888",
+                              fontSize: "12px",
+                            }}
+                          >
+                            ₹
+                            {Number(
+                              product.originalPrice
+                            ).toFixed(2)}
+                          </div>
+
+                        )}
+
+                      <div>
+                        ₹
+                        {Number(
+                          product.price || 0
+                        ).toFixed(2)}
+                      </div>
+
                     </td>
 
                     <td>

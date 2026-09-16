@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 
 import "./AdminOrderManagement.css";
 
@@ -56,7 +56,6 @@ function AdminOrderManagement() {
 
   // =========================================================
   // FETCH ORDERS
-  // Used for Refresh and after order actions
   // =========================================================
 
   const fetchOrders = async (isRefresh = false) => {
@@ -76,14 +75,7 @@ function AdminOrderManagement() {
         return;
       }
 
-      const response = await axios.get(
-        "http://localhost:8080/admin/orders",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await api.get("/admin/orders");
 
       if (Array.isArray(response.data)) {
         setOrders(response.data);
@@ -110,10 +102,6 @@ function AdminOrderManagement() {
 
   // =========================================================
   // INITIAL LOAD
-  //
-  // IMPORTANT:
-  // Do not call fetchOrders() directly here because fetchOrders()
-  // performs synchronous state updates.
   // =========================================================
 
   useEffect(() => {
@@ -128,17 +116,11 @@ function AdminOrderManagement() {
             setError("Please login as Administrator.");
             setLoading(false);
           }
+
           return;
         }
 
-        const response = await axios.get(
-          "http://localhost:8080/admin/orders",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await api.get("/admin/orders");
 
         if (!cancelled) {
           if (Array.isArray(response.data)) {
@@ -150,7 +132,10 @@ function AdminOrderManagement() {
           setError("");
         }
       } catch (err) {
-        console.error("Initial admin orders loading error:", err);
+        console.error(
+          "Initial admin orders loading error:",
+          err
+        );
 
         if (!cancelled) {
           setError(
@@ -167,10 +152,13 @@ function AdminOrderManagement() {
       }
     };
 
-    loadInitialOrders();
+    const timer = setTimeout(() => {
+      loadInitialOrders();
+    }, 0);
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, []);
 
@@ -191,16 +179,10 @@ function AdminOrderManagement() {
         return;
       }
 
-      await axios.put(
-        `http://localhost:8080/admin/orders/${orderId}/status`,
+      await api.put(
+        `/admin/orders/${orderId}/status`,
         {
           status: status,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
         }
       );
 
@@ -210,7 +192,10 @@ function AdminOrderManagement() {
         `Order #${orderId} status updated to ${status}.`
       );
     } catch (err) {
-      console.error("Order status update error:", err);
+      console.error(
+        "Order status update error:",
+        err
+      );
 
       setError(
         getErrorMessage(
@@ -240,14 +225,9 @@ function AdminOrderManagement() {
         return;
       }
 
-      await axios.put(
-        `http://localhost:8080/admin/orders/${orderId}/return/approve`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      await api.put(
+        `/admin/orders/${orderId}/return/approve`,
+        {}
       );
 
       await fetchOrders();
@@ -256,7 +236,10 @@ function AdminOrderManagement() {
         `Return request for Order #${orderId} approved successfully.`
       );
     } catch (err) {
-      console.error("Approve return error:", err);
+      console.error(
+        "Approve return error:",
+        err
+      );
 
       setError(
         getErrorMessage(
@@ -286,14 +269,9 @@ function AdminOrderManagement() {
         return;
       }
 
-      await axios.put(
-        `http://localhost:8080/admin/orders/${orderId}/return/reject`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      await api.put(
+        `/admin/orders/${orderId}/return/reject`,
+        {}
       );
 
       await fetchOrders();
@@ -302,7 +280,10 @@ function AdminOrderManagement() {
         `Return request for Order #${orderId} rejected.`
       );
     } catch (err) {
-      console.error("Reject return error:", err);
+      console.error(
+        "Reject return error:",
+        err
+      );
 
       setError(
         getErrorMessage(
@@ -332,14 +313,9 @@ function AdminOrderManagement() {
         return;
       }
 
-      await axios.put(
-        `http://localhost:8080/admin/orders/${orderId}/refund`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      await api.put(
+        `/admin/orders/${orderId}/refund`,
+        {}
       );
 
       await fetchOrders();
@@ -348,7 +324,10 @@ function AdminOrderManagement() {
         `Refund for Order #${orderId} processed successfully.`
       );
     } catch (err) {
-      console.error("Process refund error:", err);
+      console.error(
+        "Process refund error:",
+        err
+      );
 
       setError(
         getErrorMessage(
@@ -368,7 +347,6 @@ function AdminOrderManagement() {
   if (loading) {
     return (
       <div className="admin-orders">
-
         <div className="admin-orders-header">
           <div>
             <h2>🛍️ Order Management</h2>
@@ -380,7 +358,6 @@ function AdminOrderManagement() {
         </div>
 
         <p>Loading orders...</p>
-
       </div>
     );
   }
@@ -397,7 +374,6 @@ function AdminOrderManagement() {
       ===================================================== */}
 
       <div className="admin-orders-header">
-
         <div>
           <h2>🛍️ Order Management</h2>
 
@@ -410,11 +386,11 @@ function AdminOrderManagement() {
           onClick={() => fetchOrders(true)}
           disabled={refreshing}
         >
-          {refreshing ? "↻ Refreshing..." : "↻ Refresh"}
+          {refreshing
+            ? "↻ Refreshing..."
+            : "↻ Refresh"}
         </button>
-
       </div>
-
 
       {/* =====================================================
           SUCCESS MESSAGE
@@ -426,7 +402,6 @@ function AdminOrderManagement() {
         </div>
       )}
 
-
       {/* =====================================================
           ERROR MESSAGE
       ===================================================== */}
@@ -437,13 +412,11 @@ function AdminOrderManagement() {
         </div>
       )}
 
-
       {/* =====================================================
           ORDERS HEADER
       ===================================================== */}
 
       <div className="admin-orders-list-header">
-
         <div>
           <h3>Orders</h3>
 
@@ -451,36 +424,26 @@ function AdminOrderManagement() {
             {orders.length} total orders
           </span>
         </div>
-
       </div>
-
 
       {/* =====================================================
           NO ORDERS
       ===================================================== */}
 
       {orders.length === 0 ? (
-
         <div className="no-orders">
-
           <div>🛍️</div>
 
-          <h3>
-            No Orders Found
-          </h3>
+          <h3>No Orders Found</h3>
 
           <p>
             There are currently no customer orders.
           </p>
-
         </div>
-
       ) : (
-
         <div className="admin-orders-container">
 
           {orders.map((order) => (
-
             <div
               className="admin-order-card"
               key={order.id}
@@ -491,15 +454,14 @@ function AdminOrderManagement() {
               ================================================= */}
 
               <div className="admin-order-header">
-
                 <div>
-
                   <h3>
                     Order #{order.id}
                   </h3>
 
                   <p>
-                    Customer: {order.customerEmail}
+                    Customer:{" "}
+                    {order.customerEmail}
                   </p>
 
                   <p>
@@ -510,45 +472,32 @@ function AdminOrderManagement() {
                         ).toLocaleString()
                       : "N/A"}
                   </p>
-
                 </div>
-
 
                 {/* STATUS */}
 
                 <div className="admin-order-status">
-
                   <strong>
                     {order.status || "UNKNOWN"}
                   </strong>
-
                 </div>
-
               </div>
-
 
               {/* =================================================
                   PRODUCTS
               ================================================= */}
 
               <div className="admin-order-items">
-
-                <h4>
-                  Products
-                </h4>
+                <h4>Products</h4>
 
                 {order.items &&
                 order.items.length > 0 ? (
-
                   order.items.map((item) => (
-
                     <div
                       className="admin-order-item"
                       key={item.id}
                     >
-
                       <div>
-
                         <strong>
                           {item.productName ||
                             "Product"}
@@ -569,39 +518,26 @@ function AdminOrderManagement() {
                           {item.vendorEmail ||
                             "N/A"}
                         </p>
-
                       </div>
 
                       <div>
-
                         <strong>
                           ₹{item.subtotal}
                         </strong>
-
                       </div>
-
                     </div>
-
                   ))
-
                 ) : (
-
                   <div className="admin-order-item">
-
                     <div>
-
                       <strong>
-                        No product details available
+                        No product details
+                        available
                       </strong>
-
                     </div>
-
                   </div>
-
                 )}
-
               </div>
-
 
               {/* =================================================
                   ORDER FOOTER
@@ -612,7 +548,6 @@ function AdminOrderManagement() {
                 {/* TOTAL */}
 
                 <div>
-
                   <strong>
                     Total Amount:
                   </strong>
@@ -620,14 +555,11 @@ function AdminOrderManagement() {
                   <span>
                     ₹{order.totalAmount}
                   </span>
-
                 </div>
-
 
                 {/* STATUS UPDATE */}
 
                 <div className="admin-order-actions">
-
                   <label>
                     Update Status:
                   </label>
@@ -635,7 +567,8 @@ function AdminOrderManagement() {
                   <select
                     value={order.status || ""}
                     disabled={
-                      updatingOrder === order.id ||
+                      updatingOrder ===
+                        order.id ||
                       refreshing
                     }
                     onChange={(event) =>
@@ -645,7 +578,6 @@ function AdminOrderManagement() {
                       )
                     }
                   >
-
                     <option value="PENDING">
                       PENDING
                     </option>
@@ -665,40 +597,34 @@ function AdminOrderManagement() {
                     <option value="CANCELLED">
                       CANCELLED
                     </option>
-
                   </select>
 
-                  {updatingOrder === order.id && (
+                  {updatingOrder ===
+                    order.id && (
                     <span>
                       Updating...
                     </span>
                   )}
-
                 </div>
-
               </div>
-
 
               {/* =================================================
                   RETURN & REFUND
               ================================================= */}
 
               <div className="admin-return-section">
-
                 <h4>
                   🔄 Return & Refund
                 </h4>
-
 
                 {/* =================================================
                     NO RETURN
                 ================================================= */}
 
                 {(!order.returnStatus ||
-                  order.returnStatus === "NONE") && (
-
+                  order.returnStatus ===
+                    "NONE") && (
                   <div className="admin-return-empty">
-
                     <p>
                       <strong>
                         Return Status:
@@ -707,14 +633,11 @@ function AdminOrderManagement() {
                     </p>
 
                     <p>
-                      This order currently has no active
-                      return request.
+                      This order currently has
+                      no active return request.
                     </p>
-
                   </div>
-
                 )}
-
 
                 {/* =================================================
                     RETURN REQUESTED
@@ -722,9 +645,7 @@ function AdminOrderManagement() {
 
                 {order.returnStatus ===
                   "RETURN_REQUESTED" && (
-
                   <div>
-
                     <p>
                       <strong>
                         Return Status:
@@ -753,46 +674,52 @@ function AdminOrderManagement() {
                     )}
 
                     <div className="admin-refund-actions">
-
                       <p>
-                        Customer has requested a return.
-                        Please review the request.
+                        Customer has requested a
+                        return. Please review the
+                        request.
                       </p>
 
                       <button
                         onClick={() =>
-                          approveReturn(order.id)
+                          approveReturn(
+                            order.id
+                          )
                         }
                         disabled={
-                          refundLoading === order.id ||
-                          updatingOrder === order.id
+                          refundLoading ===
+                            order.id ||
+                          updatingOrder ===
+                            order.id
                         }
                       >
-                        {refundLoading === order.id
+                        {refundLoading ===
+                        order.id
                           ? "Processing..."
                           : "✅ Approve Return"}
                       </button>
 
                       <button
                         onClick={() =>
-                          rejectReturn(order.id)
+                          rejectReturn(
+                            order.id
+                          )
                         }
                         disabled={
-                          refundLoading === order.id ||
-                          updatingOrder === order.id
+                          refundLoading ===
+                            order.id ||
+                          updatingOrder ===
+                            order.id
                         }
                       >
-                        {refundLoading === order.id
+                        {refundLoading ===
+                        order.id
                           ? "Processing..."
                           : "❌ Reject Return"}
                       </button>
-
                     </div>
-
                   </div>
-
                 )}
-
 
                 {/* =================================================
                     RETURN APPROVED
@@ -800,9 +727,7 @@ function AdminOrderManagement() {
 
                 {order.returnStatus ===
                   "RETURN_APPROVED" && (
-
                   <div>
-
                     <p>
                       <strong>
                         Return Status:
@@ -819,7 +744,8 @@ function AdminOrderManagement() {
                       </p>
                     )}
 
-                    {order.refundAmount != null && (
+                    {order.refundAmount !=
+                      null && (
                       <p>
                         <strong>
                           Refund Amount:
@@ -829,32 +755,33 @@ function AdminOrderManagement() {
                     )}
 
                     <div className="admin-refund-actions">
-
                       <p>
                         ✅ Return approved.
-                        Refund is ready to process.
+                        Refund is ready to
+                        process.
                       </p>
 
                       <button
                         onClick={() =>
-                          processRefund(order.id)
+                          processRefund(
+                            order.id
+                          )
                         }
                         disabled={
-                          refundLoading === order.id ||
-                          updatingOrder === order.id
+                          refundLoading ===
+                            order.id ||
+                          updatingOrder ===
+                            order.id
                         }
                       >
-                        {refundLoading === order.id
+                        {refundLoading ===
+                        order.id
                           ? "Processing..."
                           : "💰 Process Refund"}
                       </button>
-
                     </div>
-
                   </div>
-
                 )}
-
 
                 {/* =================================================
                     REFUNDED
@@ -862,9 +789,7 @@ function AdminOrderManagement() {
 
                 {order.returnStatus ===
                   "REFUNDED" && (
-
                   <div className="admin-refund-completed">
-
                     <p>
                       <strong>
                         Return Status:
@@ -873,10 +798,12 @@ function AdminOrderManagement() {
                     </p>
 
                     <p>
-                      ✅ Refund completed successfully.
+                      ✅ Refund completed
+                      successfully.
                     </p>
 
-                    {order.refundAmount != null && (
+                    {order.refundAmount !=
+                      null && (
                       <p>
                         <strong>
                           Refund Amount:
@@ -890,7 +817,9 @@ function AdminOrderManagement() {
                         <strong>
                           Transaction ID:
                         </strong>{" "}
-                        {order.refundTransactionId}
+                        {
+                          order.refundTransactionId
+                        }
                       </p>
                     )}
 
@@ -904,11 +833,8 @@ function AdminOrderManagement() {
                         ).toLocaleString()}
                       </p>
                     )}
-
                   </div>
-
                 )}
-
 
                 {/* =================================================
                     RETURN REJECTED
@@ -916,9 +842,7 @@ function AdminOrderManagement() {
 
                 {order.returnStatus ===
                   "RETURN_REJECTED" && (
-
                   <div className="admin-refund-rejected">
-
                     <p>
                       <strong>
                         Return Status:
@@ -938,21 +862,13 @@ function AdminOrderManagement() {
                     <p>
                       ❌ Return request rejected.
                     </p>
-
                   </div>
-
                 )}
-
               </div>
-
             </div>
-
           ))}
-
         </div>
-
       )}
-
     </div>
   );
 }

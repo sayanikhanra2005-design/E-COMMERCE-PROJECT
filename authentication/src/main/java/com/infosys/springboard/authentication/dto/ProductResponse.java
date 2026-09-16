@@ -49,7 +49,22 @@ public class ProductResponse {
 
 
     // ==========================================
+    // ORIGINAL PRODUCT PRICE
+    // ==========================================
+
+    private BigDecimal originalPrice;
+
+
+    // ==========================================
+    // DISCOUNT PERCENTAGE
+    // ==========================================
+
+    private BigDecimal discountPercentage;
+
+
+    // ==========================================
     // PRODUCT PRICE
+    // Final selling price
     // ==========================================
 
     private BigDecimal price;

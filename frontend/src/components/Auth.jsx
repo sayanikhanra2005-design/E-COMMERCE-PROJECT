@@ -3,7 +3,6 @@ import api from "../services/api";
 import "./Auth.css";
 
 function Auth({ onLoginSuccess }) {
-
   const [isRegisterMode, setIsRegisterMode] = useState(false);
 
   // Login fields
@@ -30,14 +29,13 @@ function Auth({ onLoginSuccess }) {
       localStorage.setItem("token", response.data.token);
 
       onLoginSuccess();
-
     } catch (error) {
       console.error("Login failed:", error);
 
       if (error.response) {
         alert(
           error.response.data?.message ||
-          "Invalid email or password"
+            "Invalid email or password"
         );
       } else {
         alert("Cannot connect to backend");
@@ -50,7 +48,7 @@ function Auth({ onLoginSuccess }) {
 
     try {
       await api.post("/auth/register", {
-        name: name,
+        fullName: name,
         email: registerEmail,
         password: registerPassword,
         role: role,
@@ -61,14 +59,13 @@ function Auth({ onLoginSuccess }) {
       // Pre-fill login email and switch back to login mode
       setLoginEmail(registerEmail);
       setIsRegisterMode(false);
-
     } catch (error) {
       console.error("Registration failed:", error);
 
       if (error.response) {
         alert(
           error.response.data?.message ||
-          "Registration failed"
+            "Registration failed"
         );
       } else {
         alert("Cannot connect to backend");
@@ -77,19 +74,26 @@ function Auth({ onLoginSuccess }) {
   };
 
   return (
-    <div className={`auth-container ${isRegisterMode ? "register-mode" : ""}`}>
-
+    <div
+      className={`auth-container ${
+        isRegisterMode ? "register-mode" : ""
+      }`}
+    >
       {/* LOGIN FORM */}
       <div className="form-container login-form">
         <div className="form-content">
           <div className="brand">ShopStack</div>
+
           <h1>Welcome back</h1>
-          <p className="subtitle">Log in to your account to continue.</p>
+
+          <p className="subtitle">
+            Log in to your account to continue.
+          </p>
 
           <form onSubmit={handleLogin}>
-
             <div className="input-group">
               <label htmlFor="login-email">Email</label>
+
               <input
                 id="login-email"
                 type="email"
@@ -102,20 +106,34 @@ function Auth({ onLoginSuccess }) {
 
             <div className="input-group">
               <label htmlFor="login-password">Password</label>
+
               <div className="password-wrapper">
                 <input
                   id="login-password"
-                  type={showLoginPassword ? "text" : "password"}
+                  type={
+                    showLoginPassword ? "text" : "password"
+                  }
                   placeholder="Enter your password"
                   value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
+                  onChange={(e) =>
+                    setLoginPassword(e.target.value)
+                  }
                   required
                 />
+
                 <button
                   type="button"
                   className="password-toggle"
-                  onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  aria-label={showLoginPassword ? "Hide password" : "Show password"}
+                  onClick={() =>
+                    setShowLoginPassword(
+                      !showLoginPassword
+                    )
+                  }
+                  aria-label={
+                    showLoginPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
                 >
                   {showLoginPassword ? "🙈" : "👁️"}
                 </button>
@@ -125,11 +143,11 @@ function Auth({ onLoginSuccess }) {
             <button type="submit" className="main-button">
               Log In
             </button>
-
           </form>
 
           <p className="switch-text">
             Don't have an account?
+
             <button
               type="button"
               className="switch-button"
@@ -145,13 +163,19 @@ function Auth({ onLoginSuccess }) {
       <div className="form-container register-form">
         <div className="form-content">
           <div className="brand">ShopStack</div>
+
           <h1>Create account</h1>
-          <p className="subtitle">Sign up to get started with ShopStack.</p>
+
+          <p className="subtitle">
+            Sign up to get started with ShopStack.
+          </p>
 
           <form onSubmit={handleRegister}>
-
             <div className="input-group">
-              <label htmlFor="register-name">Full name</label>
+              <label htmlFor="register-name">
+                Full name
+              </label>
+
               <input
                 id="register-name"
                 type="text"
@@ -163,33 +187,56 @@ function Auth({ onLoginSuccess }) {
             </div>
 
             <div className="input-group">
-              <label htmlFor="register-email">Email</label>
+              <label htmlFor="register-email">
+                Email
+              </label>
+
               <input
                 id="register-email"
                 type="email"
                 placeholder="Enter your email"
                 value={registerEmail}
-                onChange={(e) => setRegisterEmail(e.target.value)}
+                onChange={(e) =>
+                  setRegisterEmail(e.target.value)
+                }
                 required
               />
             </div>
 
             <div className="input-group">
-              <label htmlFor="register-password">Password</label>
+              <label htmlFor="register-password">
+                Password
+              </label>
+
               <div className="password-wrapper">
                 <input
                   id="register-password"
-                  type={showRegisterPassword ? "text" : "password"}
+                  type={
+                    showRegisterPassword
+                      ? "text"
+                      : "password"
+                  }
                   placeholder="Create a password"
                   value={registerPassword}
-                  onChange={(e) => setRegisterPassword(e.target.value)}
+                  onChange={(e) =>
+                    setRegisterPassword(e.target.value)
+                  }
                   required
                 />
+
                 <button
                   type="button"
                   className="password-toggle"
-                  onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                  aria-label={showRegisterPassword ? "Hide password" : "Show password"}
+                  onClick={() =>
+                    setShowRegisterPassword(
+                      !showRegisterPassword
+                    )
+                  }
+                  aria-label={
+                    showRegisterPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
                 >
                   {showRegisterPassword ? "🙈" : "👁️"}
                 </button>
@@ -197,26 +244,37 @@ function Auth({ onLoginSuccess }) {
             </div>
 
             <div className="input-group">
-              <label htmlFor="register-role">Role</label>
+              <label htmlFor="register-role">
+                Role
+              </label>
+
               <select
                 id="register-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
               >
-                <option value="CUSTOMER">Customer</option>
-                <option value="VENDOR">Vendor</option>
-                <option value="WAREHOUSE_STAFF">Warehouse Staff</option>
+                <option value="CUSTOMER">
+                  Customer
+                </option>
+
+                <option value="VENDOR">
+                  Vendor
+                </option>
+
+                <option value="WAREHOUSE_STAFF">
+                  Warehouse Staff
+                </option>
               </select>
             </div>
 
             <button type="submit" className="main-button">
               Sign Up
             </button>
-
           </form>
 
           <p className="switch-text">
             Already have an account?
+
             <button
               type="button"
               className="switch-button"
@@ -232,10 +290,16 @@ function Auth({ onLoginSuccess }) {
       <div className="slider-panel">
         <div className="slider-content">
           <div className="slider-icon">🛍️</div>
+
           {isRegisterMode ? (
             <>
               <h2>Already with us?</h2>
-              <p>Log in to pick up right where you left off.</p>
+
+              <p>
+                Log in to pick up right where you
+                left off.
+              </p>
+
               <button
                 className="outline-button"
                 onClick={() => setIsRegisterMode(false)}
@@ -246,7 +310,12 @@ function Auth({ onLoginSuccess }) {
           ) : (
             <>
               <h2>New here?</h2>
-              <p>Create an account and start shopping with ShopStack today.</p>
+
+              <p>
+                Create an account and start shopping
+                with ShopStack today.
+              </p>
+
               <button
                 className="outline-button"
                 onClick={() => setIsRegisterMode(true)}
@@ -257,7 +326,6 @@ function Auth({ onLoginSuccess }) {
           )}
         </div>
       </div>
-
     </div>
   );
 }

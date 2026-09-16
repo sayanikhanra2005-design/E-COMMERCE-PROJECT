@@ -51,6 +51,22 @@ public class Order {
     private String paymentStatus;
 
     // ============================
+    // COUPON DETAILS
+    // ============================
+
+    private String couponCode;
+
+    // ============================
+    // RAZORPAY PAYMENT DETAILS
+    // ============================
+
+    private String razorpayOrderId;
+
+    private String razorpayPaymentId;
+
+    private String razorpaySignature;
+
+    // ============================
     // RETURN & REFUND DETAILS
     // ============================
 

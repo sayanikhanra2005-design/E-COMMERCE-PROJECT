@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import "./CustomerProfile.css";
 
 function CustomerProfile() {
-
     const [profile, setProfile] = useState({
         id: "",
         fullName: "",
         email: "",
-        role: ""
+        role: "",
     });
 
     const [fullName, setFullName] = useState("");
@@ -24,17 +23,13 @@ function CustomerProfile() {
     // =========================================================
 
     useEffect(() => {
-
         let ignore = false;
 
         const loadProfile = async () => {
-
             try {
-
                 const token = localStorage.getItem("token");
 
                 if (!token) {
-
                     if (!ignore) {
                         setError("Please login again.");
                         setLoading(false);
@@ -43,70 +38,61 @@ function CustomerProfile() {
                     return;
                 }
 
-                const response = await axios.get(
-                    "http://localhost:8080/profile",
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`
-                        }
-                    }
-                );
+                const response = await api.get("/profile");
 
                 if (!ignore) {
-
                     setProfile({
                         id: response.data.id || "",
                         fullName: response.data.fullName || "",
                         email: response.data.email || "",
-                        role: response.data.role || ""
+                        role: response.data.role || "",
                     });
 
-                    setFullName(response.data.fullName || "");
+                    setFullName(
+                        response.data.fullName || ""
+                    );
 
                     setError("");
                 }
-
             } catch (error) {
-
-                console.error("Unable to load profile:", error);
+                console.error(
+                    "Unable to load profile:",
+                    error
+                );
 
                 if (!ignore) {
-
                     if (error.response?.status === 401) {
-
                         setError(
                             "Session expired. Please login again."
                         );
-
-                    } else if (error.response?.status === 403) {
-
+                    } else if (
+                        error.response?.status === 403
+                    ) {
                         setError(
                             "You are not authorized to view this profile."
                         );
-
                     } else {
-
                         setError(
                             error.response?.data?.message ||
                             "Unable to load profile."
                         );
                     }
                 }
-
             } finally {
-
                 if (!ignore) {
                     setLoading(false);
                 }
             }
         };
 
-        loadProfile();
+        const timer = setTimeout(() => {
+            loadProfile();
+        }, 0);
 
         return () => {
             ignore = true;
+            clearTimeout(timer);
         };
-
     }, []);
 
     // =========================================================
@@ -114,7 +100,6 @@ function CustomerProfile() {
     // =========================================================
 
     const handleUpdateProfile = async (event) => {
-
         event.preventDefault();
 
         setMessage("");
@@ -123,13 +108,11 @@ function CustomerProfile() {
         const trimmedName = fullName.trim();
 
         if (!trimmedName) {
-
             setError("Full name cannot be empty.");
             return;
         }
 
         if (trimmedName.length < 2) {
-
             setError(
                 "Full name must contain at least 2 characters."
             );
@@ -138,64 +121,59 @@ function CustomerProfile() {
         }
 
         try {
-
             setSaving(true);
 
             const token = localStorage.getItem("token");
 
             if (!token) {
-
                 setError("Please login again.");
                 return;
             }
 
-            const response = await axios.put(
-                `http://localhost:8080/profile?fullName=${encodeURIComponent(trimmedName)}`,
-                {},
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
+            const response = await api.put(
+                `/profile?fullName=${encodeURIComponent(
+                    trimmedName
+                )}`,
+                {}
             );
 
             setProfile({
                 id: response.data.id || "",
                 fullName: response.data.fullName || "",
                 email: response.data.email || "",
-                role: response.data.role || ""
+                role: response.data.role || "",
             });
 
-            setFullName(response.data.fullName || "");
+            setFullName(
+                response.data.fullName || ""
+            );
 
-            setMessage("Profile updated successfully.");
-
+            setMessage(
+                "Profile updated successfully."
+            );
         } catch (error) {
-
-            console.error("Unable to update profile:", error);
+            console.error(
+                "Unable to update profile:",
+                error
+            );
 
             if (error.response?.status === 401) {
-
                 setError(
                     "Session expired. Please login again."
                 );
-
-            } else if (error.response?.status === 403) {
-
+            } else if (
+                error.response?.status === 403
+            ) {
                 setError(
                     "You are not authorized to update this profile."
                 );
-
             } else {
-
                 setError(
                     error.response?.data?.message ||
                     "Unable to update profile."
                 );
             }
-
         } finally {
-
             setSaving(false);
         }
     };
@@ -205,18 +183,15 @@ function CustomerProfile() {
     // =========================================================
 
     if (loading) {
-
         return (
             <div className="customer-profile-page">
-
                 <div className="profile-loading">
-
                     <div className="profile-loading-spinner"></div>
 
-                    <p>Loading profile...</p>
-
+                    <p>
+                        Loading profile...
+                    </p>
                 </div>
-
             </div>
         );
     }
@@ -227,61 +202,44 @@ function CustomerProfile() {
 
     return (
         <div className="customer-profile-page">
-
             <div className="profile-card">
 
                 {/* PROFILE HEADER */}
 
                 <div className="profile-card-header">
-
                     <div className="profile-avatar">
-
                         {profile.fullName
                             ? profile.fullName
-                                .charAt(0)
-                                .toUpperCase()
+                                  .charAt(0)
+                                  .toUpperCase()
                             : "C"}
-
                     </div>
 
                     <div className="profile-header-text">
-
                         <h2>My Profile</h2>
 
                         <p>
                             Manage your customer account
                         </p>
-
                     </div>
-
                 </div>
 
                 {/* SUCCESS MESSAGE */}
 
                 {message && (
-
                     <div className="profile-success">
-
                         <span>✓</span>
-
                         {message}
-
                     </div>
-
                 )}
 
                 {/* ERROR MESSAGE */}
 
                 {error && (
-
                     <div className="profile-error">
-
                         <span>⚠</span>
-
                         {error}
-
                     </div>
-
                 )}
 
                 {/* PROFILE FORM */}
@@ -294,7 +252,6 @@ function CustomerProfile() {
                     {/* FULL NAME */}
 
                     <div className="profile-field">
-
                         <label htmlFor="fullName">
                             Full Name
                         </label>
@@ -304,20 +261,20 @@ function CustomerProfile() {
                             type="text"
                             value={fullName}
                             onChange={(event) => {
-                                setFullName(event.target.value);
+                                setFullName(
+                                    event.target.value
+                                );
                                 setMessage("");
                                 setError("");
                             }}
                             placeholder="Enter your full name"
                             disabled={saving}
                         />
-
                     </div>
 
                     {/* EMAIL */}
 
                     <div className="profile-field">
-
                         <label htmlFor="email">
                             Email
                         </label>
@@ -332,13 +289,11 @@ function CustomerProfile() {
                         <small>
                             Email cannot be changed.
                         </small>
-
                     </div>
 
                     {/* ROLE */}
 
                     <div className="profile-field">
-
                         <label htmlFor="role">
                             Role
                         </label>
@@ -349,13 +304,11 @@ function CustomerProfile() {
                             value={profile.role}
                             disabled
                         />
-
                     </div>
 
                     {/* CUSTOMER ID */}
 
                     <div className="profile-field">
-
                         <label htmlFor="customerId">
                             Customer ID
                         </label>
@@ -366,7 +319,6 @@ function CustomerProfile() {
                             value={profile.id}
                             disabled
                         />
-
                     </div>
 
                     {/* UPDATE BUTTON */}
@@ -376,7 +328,6 @@ function CustomerProfile() {
                         className="profile-update-button"
                         disabled={saving}
                     >
-
                         {saving ? (
                             <>
                                 <span className="button-spinner"></span>
@@ -385,13 +336,10 @@ function CustomerProfile() {
                         ) : (
                             "Update Profile"
                         )}
-
                     </button>
 
                 </form>
-
             </div>
-
         </div>
     );
 }

@@ -60,6 +60,20 @@ public class Product {
 
 
     // ==========================================
+    // ORIGINAL PRODUCT PRICE
+    // ==========================================
+
+    private BigDecimal originalPrice;
+
+
+    // ==========================================
+    // DISCOUNT PERCENTAGE
+    // ==========================================
+
+    private BigDecimal discountPercentage;
+
+
+    // ==========================================
     // PRODUCT PRICE
     // ==========================================
 

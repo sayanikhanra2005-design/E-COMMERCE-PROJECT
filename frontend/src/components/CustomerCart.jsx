@@ -2,7 +2,6 @@ import { useState } from "react";
 import "./CustomerCart.css";
 
 function CustomerCart({ cart, setCart, onCheckout }) {
-
     const [error, setError] = useState("");
 
     // =========================================================
@@ -10,7 +9,6 @@ function CustomerCart({ cart, setCart, onCheckout }) {
     // =========================================================
 
     const updateQuantity = (productId, quantity) => {
-
         const product = cart.find(
             (item) => item.id === productId
         );
@@ -25,23 +23,21 @@ function CustomerCart({ cart, setCart, onCheckout }) {
         }
 
         if (quantity > Number(product.quantity)) {
-
             setError(
                 `Only ${product.quantity} units are available for ${product.name}.`
             );
-
             return;
         }
 
         setError("");
 
-        setCart(
-            cart.map((item) =>
+        setCart((previousCart) =>
+            previousCart.map((item) =>
                 item.id === productId
                     ? {
-                        ...item,
-                        cartQuantity: quantity
-                    }
+                          ...item,
+                          cartQuantity: quantity,
+                      }
                     : item
             )
         );
@@ -52,9 +48,8 @@ function CustomerCart({ cart, setCart, onCheckout }) {
     // =========================================================
 
     const removeFromCart = (productId) => {
-
-        setCart(
-            cart.filter(
+        setCart((previousCart) =>
+            previousCart.filter(
                 (item) => item.id !== productId
             )
         );
@@ -67,7 +62,6 @@ function CustomerCart({ cart, setCart, onCheckout }) {
     // =========================================================
 
     const getTotalItems = () => {
-
         return cart.reduce(
             (total, item) =>
                 total + Number(item.cartQuantity || 0),
@@ -80,12 +74,11 @@ function CustomerCart({ cart, setCart, onCheckout }) {
     // =========================================================
 
     const getTotal = () => {
-
         return cart.reduce(
             (total, item) =>
                 total +
                 Number(item.price || 0) *
-                Number(item.cartQuantity || 0),
+                    Number(item.cartQuantity || 0),
             0
         );
     };
@@ -95,40 +88,29 @@ function CustomerCart({ cart, setCart, onCheckout }) {
     // =========================================================
 
     const handleCheckout = () => {
-
         setError("");
 
         if (!cart || cart.length === 0) {
-
-            setError(
-                "Your cart is empty."
-            );
-
+            setError("Your cart is empty.");
             return;
         }
 
         for (const item of cart) {
-
             if (
                 Number(item.cartQuantity) <= 0 ||
                 Number(item.cartQuantity) >
-                Number(item.quantity)
+                    Number(item.quantity)
             ) {
-
                 setError(
                     `Invalid quantity for ${item.name}.`
                 );
-
                 return;
             }
         }
 
         if (onCheckout) {
-
             onCheckout();
-
         } else {
-
             setError(
                 "Checkout is currently unavailable."
             );
@@ -136,7 +118,6 @@ function CustomerCart({ cart, setCart, onCheckout }) {
     };
 
     return (
-
         <div className="customer-cart">
 
             {/* =====================================================
@@ -144,19 +125,14 @@ function CustomerCart({ cart, setCart, onCheckout }) {
             ===================================================== */}
 
             <div className="cart-header">
-
                 <div>
-
-                    <h2>
-                        🛒 My Cart
-                    </h2>
+                    <h2>🛒 My Cart</h2>
 
                     <p>
-                        Review your products before proceeding to checkout.
+                        Review your products before proceeding
+                        to checkout.
                     </p>
-
                 </div>
-
             </div>
 
             {/* =====================================================
@@ -164,11 +140,9 @@ function CustomerCart({ cart, setCart, onCheckout }) {
             ===================================================== */}
 
             {error && (
-
                 <div className="error-message">
                     {error}
                 </div>
-
             )}
 
             {/* =====================================================
@@ -176,25 +150,21 @@ function CustomerCart({ cart, setCart, onCheckout }) {
             ===================================================== */}
 
             {cart.length === 0 ? (
-
                 <div className="empty-cart">
 
-                    <div>
-                        🛒
-                    </div>
+                    <div>🛒</div>
 
                     <h3>
                         Your Cart is Empty
                     </h3>
 
                     <p>
-                        Add products to your cart before proceeding to checkout.
+                        Add products to your cart before
+                        proceeding to checkout.
                     </p>
 
                 </div>
-
             ) : (
-
                 <div className="cart-container">
 
                     {/* =================================================
@@ -204,7 +174,6 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                     <div className="cart-items">
 
                         {cart.map((item) => (
-
                             <div
                                 className="cart-item"
                                 key={item.id}
@@ -217,30 +186,27 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                                     <div className="cart-image-wrapper">
 
                                         {item.imageUrl ? (
-
                                             <img
                                                 src={item.imageUrl}
                                                 alt={item.name}
                                                 className="cart-product-image"
-                                                onError={(e) => {
-
-                                                    e.currentTarget.style.display =
+                                                onError={(event) => {
+                                                    event.currentTarget.style.display =
                                                         "none";
 
                                                     if (
-                                                        e.currentTarget
+                                                        event
+                                                            .currentTarget
                                                             .nextElementSibling
                                                     ) {
-
-                                                        e.currentTarget
+                                                        event
+                                                            .currentTarget
                                                             .nextElementSibling
                                                             .style.display =
                                                             "flex";
                                                     }
-
                                                 }}
                                             />
-
                                         ) : null}
 
                                         <div
@@ -249,7 +215,7 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                                                 display:
                                                     item.imageUrl
                                                         ? "none"
-                                                        : "flex"
+                                                        : "flex",
                                             }}
                                         >
                                             📦
@@ -264,11 +230,9 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                                         </h3>
 
                                         {item.brand && (
-
                                             <p className="cart-brand">
                                                 {item.brand}
                                             </p>
-
                                         )}
 
                                         <p className="cart-price">
@@ -375,7 +339,6 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                                 </button>
 
                             </div>
-
                         ))}
 
                     </div>
@@ -419,9 +382,7 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                         <button
                             type="button"
                             className="place-order-button"
-                            onClick={
-                                handleCheckout
-                            }
+                            onClick={handleCheckout}
                         >
                             Proceed to Checkout →
                         </button>
@@ -429,9 +390,7 @@ function CustomerCart({ cart, setCart, onCheckout }) {
                     </div>
 
                 </div>
-
             )}
-
         </div>
     );
 }

@@ -105,7 +105,8 @@ public class PaymentService {
 
         if (request.getPaymentMethod() == null
                 || request.getPaymentMethod()
-                        .trim().isEmpty()) {
+                        .trim()
+                        .isEmpty()) {
 
             throw new RuntimeException(
                     "Payment method is required");
@@ -116,12 +117,27 @@ public class PaymentService {
                         .trim()
                         .toUpperCase();
 
-        if (!paymentMethod.equals("CARD")
-                && !paymentMethod.equals("UPI")
-                && !paymentMethod.equals("COD")) {
+        // =====================================================
+        // RAZORPAY IS HANDLED SEPARATELY
+        // =====================================================
+
+        if (paymentMethod.equals("RAZORPAY")) {
 
             throw new RuntimeException(
-                    "Invalid payment method. Use CARD, UPI or COD");
+                    "Razorpay payments must be processed through Razorpay Checkout");
+        }
+
+        // =====================================================
+        // ALLOWED LEGACY METHODS
+        // =====================================================
+
+        if (!paymentMethod.equals("COD")
+                && !paymentMethod.equals("CARD")
+                && !paymentMethod.equals("UPI")) {
+
+            throw new RuntimeException(
+                    "Invalid payment method. "
+                            + "Allowed methods: COD, CARD, UPI or RAZORPAY");
         }
 
         // =====================================================
@@ -145,13 +161,17 @@ public class PaymentService {
 
         if (paymentMethod.equals("COD")) {
 
-            // COD payment is pending until delivery
+            // COD remains pending until delivery.
             paymentStatus = "PENDING";
 
         } else {
 
-            // Demo payment:
-            // CARD and UPI are automatically successful
+            /*
+             * CARD and UPI are kept here only for compatibility
+             * with your existing payment system.
+             *
+             * New online payments should use RAZORPAY.
+             */
             paymentStatus = "SUCCESS";
         }
 
@@ -225,6 +245,136 @@ public class PaymentService {
                     order,
                     transactionId);
         }
+
+        // =====================================================
+        // RETURN RESPONSE
+        // =====================================================
+
+        return convertToResponse(
+                savedPayment);
+    }
+
+    // =========================================================
+    // RECORD VERIFIED RAZORPAY PAYMENT
+    // =========================================================
+
+    public PaymentResponse recordRazorpayPayment(
+            Long orderId,
+            String customerEmail,
+            String razorpayPaymentId) {
+
+        // =====================================================
+        // VALIDATE ORDER ID
+        // =====================================================
+
+        if (orderId == null) {
+
+            throw new RuntimeException(
+                    "Order ID is required");
+        }
+
+        // =====================================================
+        // VALIDATE CUSTOMER
+        // =====================================================
+
+        if (customerEmail == null
+                || customerEmail.trim().isEmpty()) {
+
+            throw new RuntimeException(
+                    "Customer email is required");
+        }
+
+        // =====================================================
+        // VALIDATE RAZORPAY PAYMENT ID
+        // =====================================================
+
+        if (razorpayPaymentId == null
+                || razorpayPaymentId.trim().isEmpty()) {
+
+            throw new RuntimeException(
+                    "Razorpay payment ID is required");
+        }
+
+        // =====================================================
+        // FIND ORDER
+        // =====================================================
+
+        Order order =
+                orderRepository.findById(orderId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Order not found: "
+                                                + orderId));
+
+        // =====================================================
+        // VERIFY CUSTOMER OWNS ORDER
+        // =====================================================
+
+        if (order.getCustomerEmail() == null
+                || !order.getCustomerEmail()
+                        .equalsIgnoreCase(
+                                customerEmail)) {
+
+            throw new RuntimeException(
+                    "You are not authorized to make payment for this order");
+        }
+
+        // =====================================================
+        // PREVENT DUPLICATE PAYMENT
+        // =====================================================
+
+        if (paymentRepository
+                .findByOrderId(orderId)
+                .isPresent()) {
+
+            throw new RuntimeException(
+                    "Payment already exists for this order");
+        }
+
+        // =====================================================
+        // CREATE PAYMENT RECORD
+        // =====================================================
+
+        Payment payment =
+                Payment.builder()
+                        .orderId(
+                                orderId)
+                        .customerEmail(
+                                customerEmail.trim())
+                        .amount(
+                                order.getTotalAmount())
+                        .paymentMethod(
+                                "RAZORPAY")
+                        .paymentStatus(
+                                "SUCCESS")
+                        .transactionId(
+                                razorpayPaymentId)
+                        .paymentDate(
+                                LocalDateTime.now())
+                        .build();
+
+        Payment savedPayment =
+                paymentRepository.save(payment);
+
+        // =====================================================
+        // UPDATE ORDER
+        // =====================================================
+
+        order.setPaymentMethod(
+                "RAZORPAY");
+
+        order.setPaymentStatus(
+                "SUCCESS");
+
+        orderRepository.save(order);
+
+        // =====================================================
+        // SEND PAYMENT SUCCESS EMAIL
+        // =====================================================
+
+        emailService.sendPaymentSuccessEmail(
+                order,
+                razorpayPaymentId);
 
         // =====================================================
         // RETURN RESPONSE

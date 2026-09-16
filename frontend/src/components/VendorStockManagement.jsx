@@ -1,210 +1,347 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-const API_URL = "http://localhost:8080";
+import api from "../services/api";
 
 function VendorStockManagement() {
-
     const [stock, setStock] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
-    const token = localStorage.getItem("token");
+    const getToken = () => {
+        return localStorage.getItem("token");
+    };
 
-    const getConfig = () => ({
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    });
+    // =========================================================
+    // LOAD STOCK
+    // =========================================================
 
     const loadStock = async () => {
+        const token = getToken();
+
+        if (!token) {
+            setError("Please login first.");
+            setLoading(false);
+            return;
+        }
 
         try {
-
             setLoading(true);
             setError("");
 
-            const response = await axios.get(
-                `${API_URL}/vendor/stock`,
-                getConfig()
+            const response = await api.get(
+                "/vendor/stock"
             );
 
-            setStock(response.data);
+            setStock(
+                Array.isArray(response.data)
+                    ? response.data
+                    : []
+            );
 
         } catch (err) {
-
-            console.error(err);
-
-            setError(
-                err.response?.data?.message ||
-                "Failed to load stock"
+            console.error(
+                "LOAD STOCK ERROR:",
+                err
             );
 
-        } finally {
+            if (err.response?.status === 401) {
+                setError(
+                    "Your session has expired. Please login again."
+                );
+            } else if (err.response?.status === 403) {
+                setError(
+                    "Access denied. Please login as an approved vendor."
+                );
+            } else {
+                setError(
+                    err.response?.data?.message ||
+                    "Failed to load stock"
+                );
+            }
 
+        } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
+    // =========================================================
+    // INITIAL LOAD
+    // =========================================================
 
+    useEffect(() => {
         let cancelled = false;
 
         const load = async () => {
+            const token = getToken();
+
+            if (!token) {
+                if (!cancelled) {
+                    setError("Please login first.");
+                    setLoading(false);
+                }
+                return;
+            }
 
             try {
-
                 setLoading(true);
                 setError("");
 
-                const response = await axios.get(
-                    `${API_URL}/vendor/stock`,
-                    getConfig()
+                const response = await api.get(
+                    "/vendor/stock"
                 );
 
                 if (!cancelled) {
-                    setStock(response.data);
-                }
-
-            } catch (err) {
-
-                console.error(err);
-
-                if (!cancelled) {
-                    setError(
-                        err.response?.data?.message ||
-                        "Failed to load stock"
+                    setStock(
+                        Array.isArray(response.data)
+                            ? response.data
+                            : []
                     );
                 }
 
-            } finally {
+            } catch (err) {
+                console.error(
+                    "INITIAL STOCK ERROR:",
+                    err
+                );
 
+                if (!cancelled) {
+                    if (err.response?.status === 401) {
+                        setError(
+                            "Your session has expired. Please login again."
+                        );
+                    } else if (
+                        err.response?.status === 403
+                    ) {
+                        setError(
+                            "Access denied. Please login as an approved vendor."
+                        );
+                    } else {
+                        setError(
+                            err.response?.data?.message ||
+                            "Failed to load stock"
+                        );
+                    }
+                }
+
+            } finally {
                 if (!cancelled) {
                     setLoading(false);
                 }
             }
         };
 
-        load();
+        const timer = setTimeout(() => {
+            load();
+        }, 0);
 
         return () => {
             cancelled = true;
+            clearTimeout(timer);
         };
-
     }, []);
 
-    const updateStock = async (productId, quantity) => {
+    // =========================================================
+    // UPDATE TOTAL STOCK
+    // =========================================================
+
+    const updateStock = async (
+        productId,
+        quantity
+    ) => {
+        const token = getToken();
+
+        if (!token) {
+            setError("Please login first.");
+            return;
+        }
 
         try {
-
             setMessage("");
             setError("");
 
-            await axios.put(
-                `${API_URL}/vendor/stock/${productId}`,
+            await api.put(
+                `/vendor/stock/${productId}`,
                 {
-                    quantity: Number(quantity)
-                },
-                getConfig()
+                    quantity: Number(quantity),
+                }
             );
 
-            setMessage("Stock updated successfully.");
+            setMessage(
+                "Stock updated successfully."
+            );
 
             await loadStock();
 
         } catch (err) {
-
-            console.error(err);
-
-            setError(
-                err.response?.data?.message ||
-                "Failed to update stock"
+            console.error(
+                "UPDATE STOCK ERROR:",
+                err
             );
+
+            if (err.response?.status === 401) {
+                setError(
+                    "Your session has expired. Please login again."
+                );
+            } else if (err.response?.status === 403) {
+                setError(
+                    "You are not allowed to update this stock."
+                );
+            } else {
+                setError(
+                    err.response?.data?.message ||
+                    "Failed to update stock"
+                );
+            }
         }
     };
 
-    const increaseStock = async (productId) => {
+    // =========================================================
+    // INCREASE STOCK
+    // =========================================================
 
+    const increaseStock = async (
+        productId
+    ) => {
         const amount = prompt(
             "Enter quantity to add:"
         );
 
-        if (!amount) return;
+        if (!amount) {
+            return;
+        }
 
-        if (Number(amount) <= 0) {
-            setError("Enter a valid quantity.");
+        if (
+            Number.isNaN(Number(amount)) ||
+            Number(amount) <= 0
+        ) {
+            setError(
+                "Enter a valid quantity."
+            );
+            return;
+        }
+
+        const token = getToken();
+
+        if (!token) {
+            setError("Please login first.");
             return;
         }
 
         try {
-
             setMessage("");
             setError("");
 
-            await axios.put(
-                `${API_URL}/vendor/stock/${productId}/increase`,
+            await api.put(
+                `/vendor/stock/${productId}/increase`,
                 {
-                    quantity: Number(amount)
-                },
-                getConfig()
+                    quantity: Number(amount),
+                }
             );
 
-            setMessage("Stock increased successfully.");
+            setMessage(
+                "Stock increased successfully."
+            );
 
             await loadStock();
 
         } catch (err) {
-
-            console.error(err);
-
-            setError(
-                err.response?.data?.message ||
-                "Failed to increase stock"
+            console.error(
+                "INCREASE STOCK ERROR:",
+                err
             );
+
+            if (err.response?.status === 401) {
+                setError(
+                    "Your session has expired. Please login again."
+                );
+            } else if (err.response?.status === 403) {
+                setError(
+                    "You are not allowed to update this stock."
+                );
+            } else {
+                setError(
+                    err.response?.data?.message ||
+                    "Failed to increase stock"
+                );
+            }
         }
     };
 
-    const decreaseStock = async (productId) => {
+    // =========================================================
+    // DECREASE STOCK
+    // =========================================================
 
+    const decreaseStock = async (
+        productId
+    ) => {
         const amount = prompt(
             "Enter quantity to remove:"
         );
 
-        if (!amount) return;
+        if (!amount) {
+            return;
+        }
 
-        if (Number(amount) <= 0) {
-            setError("Enter a valid quantity.");
+        if (
+            Number.isNaN(Number(amount)) ||
+            Number(amount) <= 0
+        ) {
+            setError(
+                "Enter a valid quantity."
+            );
+            return;
+        }
+
+        const token = getToken();
+
+        if (!token) {
+            setError("Please login first.");
             return;
         }
 
         try {
-
             setMessage("");
             setError("");
 
-            await axios.put(
-                `${API_URL}/vendor/stock/${productId}/decrease`,
+            await api.put(
+                `/vendor/stock/${productId}/decrease`,
                 {
-                    quantity: Number(amount)
-                },
-                getConfig()
+                    quantity: Number(amount),
+                }
             );
 
-            setMessage("Stock decreased successfully.");
+            setMessage(
+                "Stock decreased successfully."
+            );
 
             await loadStock();
 
         } catch (err) {
-
-            console.error(err);
-
-            setError(
-                err.response?.data?.message ||
-                "Failed to decrease stock"
+            console.error(
+                "DECREASE STOCK ERROR:",
+                err
             );
+
+            if (err.response?.status === 401) {
+                setError(
+                    "Your session has expired. Please login again."
+                );
+            } else if (err.response?.status === 403) {
+                setError(
+                    "You are not allowed to update this stock."
+                );
+            } else {
+                setError(
+                    err.response?.data?.message ||
+                    "Failed to decrease stock"
+                );
+            }
         }
     };
+
+    // =========================================================
+    // LOADING
+    // =========================================================
 
     if (loading) {
         return (
@@ -214,6 +351,10 @@ function VendorStockManagement() {
         );
     }
 
+    // =========================================================
+    // UI
+    // =========================================================
+
     return (
         <div style={{ padding: "20px" }}>
 
@@ -222,68 +363,91 @@ function VendorStockManagement() {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    marginBottom: "20px"
+                    marginBottom: "20px",
                 }}
             >
 
                 <div>
-                    <h2>Stock Management</h2>
+                    <h2>
+                        Stock Management
+                    </h2>
+
                     <p>
                         Manage your product inventory
                     </p>
                 </div>
 
-                <button onClick={loadStock}>
+                <button
+                    type="button"
+                    onClick={loadStock}
+                >
                     Refresh
                 </button>
 
             </div>
+
+            {/* SUCCESS MESSAGE */}
 
             {message && (
                 <div
                     style={{
                         padding: "10px",
                         marginBottom: "15px",
-                        borderRadius: "6px"
+                        borderRadius: "6px",
                     }}
                 >
                     {message}
                 </div>
             )}
 
+            {/* ERROR MESSAGE */}
+
             {error && (
                 <div
                     style={{
                         padding: "10px",
                         marginBottom: "15px",
-                        borderRadius: "6px"
+                        borderRadius: "6px",
                     }}
                 >
                     {error}
                 </div>
             )}
 
+            {/* NO STOCK */}
+
             {stock.length === 0 ? (
 
                 <div>
-                    <h3>No inventory found</h3>
+
+                    <h3>
+                        No inventory found
+                    </h3>
+
                     <p>
-                        Add a product first from Product Management.
+                        Add a product first from
+                        Product Management.
                     </p>
+
                 </div>
 
             ) : (
 
-                <div style={{ overflowX: "auto" }}>
+                <div
+                    style={{
+                        overflowX: "auto",
+                    }}
+                >
 
                     <table
                         style={{
                             width: "100%",
-                            borderCollapse: "collapse"
+                            borderCollapse: "collapse",
                         }}
                     >
 
                         <thead>
+
                             <tr>
                                 <th>ID</th>
                                 <th>Product</th>
@@ -293,6 +457,7 @@ function VendorStockManagement() {
                                 <th>Last Updated</th>
                                 <th>Actions</th>
                             </tr>
+
                         </thead>
 
                         <tbody>
@@ -333,32 +498,35 @@ function VendorStockManagement() {
                                     <td>
 
                                         <button
+                                            type="button"
                                             onClick={() =>
                                                 increaseStock(
                                                     item.product.id
                                                 )
                                             }
                                             style={{
-                                                marginRight: "5px"
+                                                marginRight: "5px",
                                             }}
                                         >
                                             + Add
                                         </button>
 
                                         <button
+                                            type="button"
                                             onClick={() =>
                                                 decreaseStock(
                                                     item.product.id
                                                 )
                                             }
                                             style={{
-                                                marginRight: "5px"
+                                                marginRight: "5px",
                                             }}
                                         >
                                             - Remove
                                         </button>
 
                                         <button
+                                            type="button"
                                             onClick={() => {
 
                                                 const quantity =
@@ -369,6 +537,9 @@ function VendorStockManagement() {
 
                                                 if (
                                                     quantity !== null &&
+                                                    !Number.isNaN(
+                                                        Number(quantity)
+                                                    ) &&
                                                     Number(quantity) >= 0
                                                 ) {
                                                     updateStock(

@@ -29,3 +29,4 @@ public interface ShipmentRepository
     boolean existsByTrackingNumber(
             String trackingNumber);
 }
+

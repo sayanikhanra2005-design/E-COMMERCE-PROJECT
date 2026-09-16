@@ -426,6 +426,7 @@
 
 .payment-method:hover {
     border-color: #6c63ff;
+    box-shadow: 0 3px 10px rgba(108, 99, 255, 0.08);
 }
 
 .payment-method.selected {
@@ -451,6 +452,41 @@
     margin: 0;
     color: #777;
     font-size: 13px;
+}
+
+/* =========================================================
+   RAZORPAY PAYMENT
+========================================================= */
+
+.payment-method.razorpay-method {
+    position: relative;
+}
+
+.razorpay-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 8px;
+    padding: 4px 9px;
+    border-radius: 20px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.razorpay-info {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border: 1px solid #ddd9ff;
+    border-radius: 10px;
+    background: #faf9ff;
+    color: #555;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.razorpay-info strong {
+    color: #4f46e5;
 }
 
 /* =========================================================
@@ -552,6 +588,7 @@
     align-items: center;
     gap: 10px;
     width: 100%;
+    min-height: 54px;
     padding: 6px;
     box-sizing: border-box;
     border: 1px solid #ddd9ff;
@@ -566,16 +603,12 @@
     background: #ffffff;
 }
 
-/* COUPON SELECT WRAPPER */
-
 .coupon-select-wrapper {
     position: relative;
     flex: 1;
     min-width: 0;
     width: 100%;
 }
-
-/* COUPON SELECT */
 
 .coupon-dropdown {
     display: block;
@@ -595,32 +628,22 @@
     cursor: pointer;
 }
 
-/* COUPON ARROW */
+.coupon-dropdown:hover,
+.coupon-dropdown:focus {
+    border-color: #6c63ff;
+}
 
 .coupon-dropdown-arrow {
     position: absolute;
     top: 50%;
     right: 13px;
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #555;
+    border-bottom: 2px solid #555;
+    transform: translateY(-65%) rotate(45deg);
     pointer-events: none;
-    color: #555;
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 18px;
-    text-align: center;
     z-index: 10;
-}
-
-.coupon-dropdown:hover,
-.coupon-dropdown:focus {
-    border-color: #6c63ff;
 }
 
 .coupon-box > button {
@@ -646,6 +669,48 @@
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
+}
+
+/* =========================================================
+   AVAILABLE COUPON INFORMATION
+========================================================= */
+
+.available-coupons {
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fafafa;
+}
+
+.available-coupons h4 {
+    margin: 0 0 10px;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.available-coupon-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid #eeeeee;
+}
+
+.available-coupon-item:last-child {
+    border-bottom: none;
+}
+
+.available-coupon-code {
+    color: #4f46e5;
+    font-weight: 700;
+}
+
+.available-coupon-date {
+    color: #777;
+    font-size: 12px;
 }
 
 /* =========================================================
@@ -1228,10 +1293,8 @@
 
     .coupon-dropdown-arrow {
         right: 11px;
-        width: 16px;
-        height: 16px;
-        font-size: 14px;
-        line-height: 16px;
+        width: 8px;
+        height: 8px;
     }
 
     .coupon-box > button {
@@ -1241,6 +1304,11 @@
     }
 
     .applied-coupon {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .available-coupon-item {
         align-items: flex-start;
         flex-direction: column;
     }
@@ -1340,6 +1408,8 @@
         overflow-wrap: anywhere;
     }
 
+    /* COUPON */
+
     .coupon-box {
         flex-direction: column;
         align-items: stretch;
@@ -1359,10 +1429,8 @@
 
     .coupon-dropdown-arrow {
         right: 14px;
-        width: 18px;
-        height: 18px;
-        font-size: 15px;
-        line-height: 18px;
+        width: 8px;
+        height: 8px;
     }
 
     .checkout-summary {
@@ -1372,70 +1440,4 @@
     .checkout-empty {
         padding: 30px 16px;
     }
-    /* =========================================================
-   COUPON BOX - FORCE VISIBLE
-========================================================= */
-
-.review-section .coupon-box {
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    width: 100% !important;
-    min-height: 54px !important;
-    padding: 6px !important;
-    box-sizing: border-box !important;
-    border: 1px solid #ddd9ff !important;
-    border-radius: 10px !important;
-    background: #faf9ff !important;
-}
-
-.review-section .coupon-select-wrapper {
-    position: relative !important;
-    flex: 1 !important;
-    min-width: 0 !important;
-    width: 100% !important;
-}
-
-.review-section .coupon-dropdown {
-    display: block !important;
-    width: 100% !important;
-    height: 42px !important;
-    padding: 0 42px 0 13px !important;
-    box-sizing: border-box !important;
-    border: 1px solid #ddd9ff !important;
-    border-radius: 7px !important;
-    outline: none !important;
-    appearance: none !important;
-    -webkit-appearance: none !important;
-    -moz-appearance: none !important;
-    background: #ffffff !important;
-    color: #333 !important;
-    font-size: 14px !important;
-}
-
-.review-section .coupon-dropdown-arrow {
-    position: absolute !important;
-    top: 50% !important;
-    right: 13px !important;
-    width: 8px !important;
-    height: 8px !important;
-    border-right: 2px solid #555 !important;
-    border-bottom: 2px solid #555 !important;
-    transform: translateY(-65%) rotate(45deg) !important;
-    pointer-events: none !important;
-    z-index: 10 !important;
-}
-
-.review-section .coupon-box > button {
-    flex-shrink: 0 !important;
-    height: 42px !important;
-    padding: 0 20px !important;
-    border: none !important;
-    border-radius: 7px !important;
-    background: #6c63ff !important;
-    color: #ffffff !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-}
 }

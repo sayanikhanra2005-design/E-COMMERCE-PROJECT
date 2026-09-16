@@ -1,8 +1,8 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import "./VendorOrderManagement.css";
-function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
 
+function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
     const [step, setStep] = useState(1);
 
     const [addresses, setAddresses] = useState([]);
@@ -44,9 +44,7 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
     // =========================================================
 
     const loadAddresses = async () => {
-
         try {
-
             setLoadingAddresses(true);
             setError("");
 
@@ -57,62 +55,43 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                 return false;
             }
 
-            const response = await axios.get(
-                "http://localhost:8080/customer/addresses",
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
+            const response = await api.get(
+                "/customer/addresses"
             );
 
             if (Array.isArray(response.data)) {
-
                 setAddresses(response.data);
-
             } else {
-
                 setAddresses([]);
-
             }
 
             return true;
-
         } catch (err) {
-
             console.error(
                 "Address loading error:",
                 err
             );
 
             if (err.response?.status === 403) {
-
                 setError(
                     "Access denied. Please login as Customer."
                 );
-
-            } else if (err.response?.status === 401) {
-
+            } else if (
+                err.response?.status === 401
+            ) {
                 setError(
                     "Your session has expired. Please login again."
                 );
-
             } else {
-
                 setError(
                     "Unable to load your addresses."
                 );
-
             }
 
             return false;
-
         } finally {
-
             setLoadingAddresses(false);
-
         }
-
     };
 
     // =========================================================
@@ -120,13 +99,9 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
     // =========================================================
 
     const goToAddressStep = async () => {
-
         if (!cart || cart.length === 0) {
-
             setError("Your cart is empty.");
-
             return;
-
         }
 
         setError("");
@@ -134,11 +109,8 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
         const success = await loadAddresses();
 
         if (success) {
-
             setStep(2);
-
         }
-
     };
 
     // =========================================================
@@ -146,10 +118,8 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
     // =========================================================
 
     const selectAddress = (address) => {
-
         setSelectedAddress(address);
         setError("");
-
     };
 
     // =========================================================
@@ -157,20 +127,16 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
     // =========================================================
 
     const goToReviewStep = () => {
-
         if (!selectedAddress) {
-
             setError(
                 "Please select a delivery address."
             );
 
             return;
-
         }
 
         setError("");
         setStep(3);
-
     };
 
     // =========================================================
@@ -178,9 +144,7 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
     // =========================================================
 
     const placeOrder = async () => {
-
         try {
-
             setPlacingOrder(true);
             setError("");
 
@@ -188,31 +152,26 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                 localStorage.getItem("token");
 
             if (!token) {
-
                 setError(
                     "Please login as Customer."
                 );
 
                 return;
-
             }
 
             // Validate cart
 
             if (!cart || cart.length === 0) {
-
                 setError(
                     "Your cart is empty."
                 );
 
                 return;
-
             }
 
             // Validate address
 
             if (!selectedAddress) {
-
                 setError(
                     "Please select a delivery address."
                 );
@@ -220,19 +179,16 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                 setStep(2);
 
                 return;
-
             }
 
             // Validate quantities
 
             for (const item of cart) {
-
                 if (
                     Number(item.cartQuantity) <= 0 ||
                     Number(item.cartQuantity) >
                     Number(item.quantity)
                 ) {
-
                     setError(
                         `Invalid quantity for ${item.name}.`
                     );
@@ -240,9 +196,7 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                     setStep(1);
 
                     return;
-
                 }
-
             }
 
             // Prepare order items
@@ -258,18 +212,10 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
             // CREATE ORDER
             // =================================================
 
-            const response = await axios.post(
-                "http://localhost:8080/customer/orders",
+            const response = await api.post(
+                "/customer/orders",
                 {
                     items: items
-                },
-                {
-                    headers: {
-                        Authorization:
-                            `Bearer ${token}`,
-                        "Content-Type":
-                            "application/json"
-                    }
                 }
             );
 
@@ -285,62 +231,46 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
             // Notify CustomerDashboard
 
             if (onOrderPlaced) {
-
                 onOrderPlaced(
                     response.data
                 );
-
             }
-
         } catch (err) {
-
             console.error(
                 "Order placement error:",
                 err
             );
 
             if (err.response?.status === 403) {
-
                 setError(
                     "Access denied. Please login as Customer."
                 );
-
-            } else if (err.response?.status === 401) {
-
+            } else if (
+                err.response?.status === 401
+            ) {
                 setError(
                     "Your session has expired. Please login again."
                 );
-
             } else if (
                 err.response?.data?.message
             ) {
-
                 setError(
                     err.response.data.message
                 );
-
             } else if (
                 typeof err.response?.data === "string"
             ) {
-
                 setError(
                     err.response.data
                 );
-
             } else {
-
                 setError(
                     "Unable to place order. Please try again."
                 );
-
             }
-
         } finally {
-
             setPlacingOrder(false);
-
         }
-
     };
 
     // =========================================================
@@ -348,9 +278,7 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
     // =========================================================
 
     if (!cart || cart.length === 0) {
-
         return (
-
             <div className="customer-checkout">
 
                 <div className="checkout-empty">
@@ -378,13 +306,10 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                 </div>
 
             </div>
-
         );
-
     }
 
     return (
-
         <div className="customer-checkout">
 
             {/* =================================================
@@ -421,13 +346,11 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                             : "checkout-step"
                     }
                 >
-
                     <span>1</span>
 
                     <small>
                         Cart
                     </small>
-
                 </div>
 
                 <div
@@ -437,13 +360,11 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                             : "checkout-step"
                     }
                 >
-
                     <span>2</span>
 
                     <small>
                         Address
                     </small>
-
                 </div>
 
                 <div
@@ -453,13 +374,11 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                             : "checkout-step"
                     }
                 >
-
                     <span>3</span>
 
                     <small>
                         Review
                     </small>
-
                 </div>
 
                 <div
@@ -469,13 +388,11 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                             : "checkout-step"
                     }
                 >
-
                     <span>4</span>
 
                     <small>
                         Confirmation
                     </small>
-
                 </div>
 
             </div>
@@ -485,11 +402,9 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
             ================================================= */}
 
             {error && (
-
                 <div className="checkout-error">
                     {error}
                 </div>
-
             )}
 
             {/* =================================================
@@ -497,7 +412,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
             ================================================= */}
 
             {step === 1 && (
-
                 <div className="checkout-section">
 
                     <div className="checkout-section-header">
@@ -520,7 +434,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                     <div className="checkout-products">
 
                         {cart.map((item) => (
-
                             <div
                                 className="checkout-product"
                                 key={item.id}
@@ -529,19 +442,15 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                                 <div className="checkout-product-left">
 
                                     {item.imageUrl ? (
-
                                         <img
                                             src={item.imageUrl}
                                             alt={item.name}
                                             className="checkout-product-image"
                                         />
-
                                     ) : (
-
                                         <div className="checkout-product-placeholder">
                                             📦
                                         </div>
-
                                     )}
 
                                     <div>
@@ -568,17 +477,14 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                                 </div>
 
                                 <strong className="checkout-product-price">
-
                                     ₹
                                     {(
                                         Number(item.price) *
                                         Number(item.cartQuantity)
                                     ).toFixed(2)}
-
                                 </strong>
 
                             </div>
-
                         ))}
 
                     </div>
@@ -632,7 +538,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                     </div>
 
                 </div>
-
             )}
 
             {/* =================================================
@@ -640,7 +545,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
             ================================================= */}
 
             {step === 2 && (
-
                 <div className="checkout-section">
 
                     <div className="checkout-section-header">
@@ -661,7 +565,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                     </div>
 
                     {loadingAddresses ? (
-
                         <div className="checkout-loading">
 
                             <div>
@@ -673,9 +576,7 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                             </p>
 
                         </div>
-
                     ) : addresses.length === 0 ? (
-
                         <div className="no-addresses">
 
                             <div>
@@ -699,13 +600,10 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                             </button>
 
                         </div>
-
                     ) : (
-
                         <div className="checkout-addresses">
 
                             {addresses.map((address) => (
-
                                 <div
                                     key={address.id}
                                     className={
@@ -758,19 +656,15 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
 
                                     {selectedAddress?.id ===
                                         address.id && (
-
                                         <span className="selected-label">
                                             Selected
                                         </span>
-
                                     )}
 
                                 </div>
-
                             ))}
 
                         </div>
-
                     )}
 
                     <div className="checkout-actions">
@@ -778,10 +672,8 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                         <button
                             className="checkout-secondary-button"
                             onClick={() => {
-
                                 setError("");
                                 setStep(1);
-
                             }}
                         >
                             ← Back
@@ -798,7 +690,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                     </div>
 
                 </div>
-
             )}
 
             {/* =================================================
@@ -806,7 +697,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
             ================================================= */}
 
             {step === 3 && selectedAddress && (
-
                 <div className="checkout-section">
 
                     <div className="checkout-section-header">
@@ -878,7 +768,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                         </h4>
 
                         {cart.map((item) => (
-
                             <div
                                 className="review-product"
                                 key={item.id}
@@ -910,7 +799,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                                 </strong>
 
                             </div>
-
                         ))}
 
                     </div>
@@ -936,10 +824,8 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                         <button
                             className="checkout-secondary-button"
                             onClick={() => {
-
                                 setError("");
                                 setStep(2);
-
                             }}
                         >
                             ← Change Address
@@ -950,17 +836,14 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                             onClick={placeOrder}
                             disabled={placingOrder}
                         >
-
                             {placingOrder
                                 ? "⏳ Placing Order..."
                                 : "✓ Place Order"}
-
                         </button>
 
                     </div>
 
                 </div>
-
             )}
 
             {/* =================================================
@@ -968,7 +851,6 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
             ================================================= */}
 
             {step === 4 && (
-
                 <div className="checkout-section checkout-confirmation">
 
                     <div className="confirmation-icon">
@@ -986,6 +868,7 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                     <div className="confirmation-summary">
 
                         <div>
+
                             <span>
                                 Total Items
                             </span>
@@ -993,9 +876,11 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                             <strong>
                                 {getTotalItems()}
                             </strong>
+
                         </div>
 
                         <div>
+
                             <span>
                                 Total Amount
                             </span>
@@ -1003,36 +888,33 @@ function CustomerCheckout({ cart, onBackToCart, onOrderPlaced }) {
                             <strong>
                                 ₹{getTotal().toFixed(2)}
                             </strong>
+
                         </div>
 
                     </div>
 
                     <p className="confirmation-note">
                         Your order has been created successfully.
-                        You can track it from <strong>My Orders</strong>.
+                        You can track it from{" "}
+                        <strong>My Orders</strong>.
                     </p>
 
                     <button
                         className="checkout-primary-button"
                         onClick={() => {
-
                             if (onOrderPlaced) {
                                 onOrderPlaced();
                             }
-
                         }}
                     >
                         View My Orders →
                     </button>
 
                 </div>
-
             )}
 
         </div>
-
     );
-
 }
 
 export default CustomerCheckout;
