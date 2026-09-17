@@ -641,22 +641,24 @@
 .return-status-box {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 13px 15px;
-    border-radius: 10px;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: 12px;
     border: 1px solid #e5e7eb;
     background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 .return-status-icon {
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 19px;
+    font-weight: 700;
     flex-shrink: 0;
 }
 
@@ -669,7 +671,7 @@
     display: block;
     color: #111827;
     font-size: 14px;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
 }
 
 .return-status-content span {
@@ -716,8 +718,9 @@
 }
 
 .return-refunded {
-    border-color: #bbf7d0;
+    border-color: #86efac;
     background: #f0fdf4;
+    box-shadow: 0 3px 12px rgba(22, 101, 52, 0.06);
 }
 
 .return-refunded .return-status-icon {
@@ -732,10 +735,11 @@
 
 .refund-details {
     margin-top: 14px;
-    padding: 15px;
-    border-radius: 10px;
+    padding: 17px 18px;
+    border-radius: 12px;
     background: white;
     border: 1px solid #bbf7d0;
+    box-shadow: 0 2px 8px rgba(22, 101, 52, 0.04);
 }
 
 .refund-details h4 {
@@ -749,7 +753,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 15px;
-    padding: 7px 0;
+    padding: 8px 0;
     border-bottom: 1px solid #f0fdf4;
     font-size: 13px;
 }

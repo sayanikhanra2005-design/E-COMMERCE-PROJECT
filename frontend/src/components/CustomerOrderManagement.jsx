@@ -95,6 +95,8 @@ function CustomerOrderManagement() {
 
             const response = await api.get("/customer/orders");
 
+            console.log("CUSTOMER ORDERS RESPONSE:", response.data);
+
             if (Array.isArray(response.data)) {
                 setOrders(response.data);
             } else {
@@ -207,8 +209,11 @@ function CustomerOrderManagement() {
 
             await api.put(
                 `/customer/orders/${orderId}/return`,
+                JSON.stringify(reason.trim()),
                 {
-                    reason: reason.trim(),
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
                 }
             );
 
@@ -234,11 +239,6 @@ function CustomerOrderManagement() {
     // =========================================================
     // LOAD ORDERS WHEN PAGE OPENS
     // =========================================================
-    //
-    // IMPORTANT:
-    // We use setTimeout here so the state updates inside
-    // loadOrders() do not happen synchronously inside the effect.
-    //
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -308,7 +308,13 @@ function CustomerOrderManagement() {
             return "N/A";
         }
 
-        return new Date(date).toLocaleString("en-IN", {
+        const parsedDate = new Date(date);
+
+        if (Number.isNaN(parsedDate.getTime())) {
+            return "N/A";
+        }
+
+        return parsedDate.toLocaleString("en-IN", {
             day: "2-digit",
             month: "short",
             year: "numeric",
@@ -474,15 +480,23 @@ function CustomerOrderManagement() {
                     const orderStatus =
                         order.status?.toUpperCase();
 
+                    const returnStatus =
+                        order.returnStatus?.toUpperCase();
+
                     const canCancel =
                         orderStatus === "PENDING" ||
                         orderStatus === "CONFIRMED";
 
                     const canReturn =
-                        orderStatus === "DELIVERED";
+                        orderStatus === "DELIVERED" &&
+                        (!returnStatus ||
+                            returnStatus === "NONE");
 
                     const isProcessing =
                         processingOrderId === order.id;
+
+                    const isRefunded =
+                        returnStatus === "REFUNDED";
 
                     return (
 
@@ -832,36 +846,283 @@ function CustomerOrderManagement() {
 
                             )}
 
-                            {/* RETURN STATUS */}
+                            {/* =================================================
+                                RETURN / REFUND SECTION
+                               ================================================= */}
 
-                            {order.returnStatus &&
-                                order.returnStatus !== "N/A" && (
+                            {returnStatus && (
+                                <div
+                                    className="return-refund-section"
+                                    style={{
+                                        marginTop: "20px",
+                                        padding: "18px",
+                                        borderRadius: "12px",
+                                        border: isRefunded
+                                            ? "1px solid #86efac"
+                                            : "1px solid #e5e7eb",
+                                        background: isRefunded
+                                            ? "#f0fdf4"
+                                            : "#f9fafb",
+                                    }}
+                                >
 
                                     <div
                                         style={{
-                                            marginTop: "12px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            gap: "12px",
+                                            flexWrap: "wrap",
                                         }}
                                     >
 
-                                        <strong>
-                                            Return Status:
-                                        </strong>{" "}
+                                        <h3
+                                            style={{
+                                                margin: 0,
+                                            }}
+                                        >
+                                            🔄 Return & Refund
+                                        </h3>
 
-                                        {order.returnStatus}
-
-                                        {order.returnReason && (
-
-                                            <span>
-                                                {" "}
-                                                —{" "}
-                                                {order.returnReason}
-                                            </span>
-
-                                        )}
+                                        <span
+                                            style={{
+                                                fontWeight: 700,
+                                                color: isRefunded
+                                                    ? "#15803d"
+                                                    : "#374151",
+                                            }}
+                                        >
+                                            {returnStatus}
+                                        </span>
 
                                     </div>
 
-                                )}
+                                    {/* RETURN REQUESTED */}
+
+                                    {returnStatus ===
+                                        "RETURN_REQUESTED" && (
+                                        <div
+                                            style={{
+                                                marginTop: "12px",
+                                            }}
+                                        >
+                                            <p>
+                                                Your return request has
+                                                been submitted and is
+                                                waiting for admin approval.
+                                            </p>
+
+                                            {order.returnReason && (
+                                                <p>
+                                                    <strong>
+                                                        Reason:
+                                                    </strong>{" "}
+                                                    {order.returnReason}
+                                                </p>
+                                            )}
+
+                                            {order.returnRequestedDate && (
+                                                <p>
+                                                    <strong>
+                                                        Requested on:
+                                                    </strong>{" "}
+                                                    {formatDate(
+                                                        order.returnRequestedDate
+                                                    )}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* RETURN APPROVED */}
+
+                                    {returnStatus ===
+                                        "RETURN_APPROVED" && (
+                                        <div
+                                            style={{
+                                                marginTop: "12px",
+                                            }}
+                                        >
+                                            <p>
+                                                ✅ Your return has been
+                                                approved.
+                                            </p>
+
+                                            <p>
+                                                Your refund is being
+                                                processed.
+                                            </p>
+
+                                            {order.refundAmount != null && (
+                                                <p>
+                                                    <strong>
+                                                        Refund Amount:
+                                                    </strong>{" "}
+                                                    ₹
+                                                    {Number(
+                                                        order.refundAmount
+                                                    ).toFixed(2)}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* RETURN REJECTED */}
+
+                                    {returnStatus ===
+                                        "RETURN_REJECTED" && (
+                                        <div
+                                            style={{
+                                                marginTop: "12px",
+                                            }}
+                                        >
+                                            <p>
+                                                ❌ Your return request has
+                                                been rejected.
+                                            </p>
+
+                                            {order.returnReason && (
+                                                <p>
+                                                    <strong>
+                                                        Reason:
+                                                    </strong>{" "}
+                                                    {order.returnReason}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* REFUNDED */}
+
+                                    {isRefunded && (
+                                        <div
+                                            style={{
+                                                marginTop: "15px",
+                                                paddingTop: "15px",
+                                                borderTop:
+                                                    "1px solid #bbf7d0",
+                                            }}
+                                        >
+
+                                            <div
+                                                style={{
+                                                    fontSize: "18px",
+                                                    fontWeight: 700,
+                                                    color: "#15803d",
+                                                    marginBottom: "12px",
+                                                }}
+                                            >
+                                                ✅ Refund completed
+                                                successfully
+                                            </div>
+
+                                            <div
+                                                style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns:
+                                                        "repeat(auto-fit, minmax(200px, 1fr))",
+                                                    gap: "12px",
+                                                }}
+                                            >
+
+                                                <div>
+                                                    <small
+                                                        style={{
+                                                            display:
+                                                                "block",
+                                                            color:
+                                                                "#6b7280",
+                                                            marginBottom:
+                                                                "4px",
+                                                        }}
+                                                    >
+                                                        Refund Amount
+                                                    </small>
+
+                                                    <strong
+                                                        style={{
+                                                            fontSize:
+                                                                "17px",
+                                                            color:
+                                                                "#15803d",
+                                                        }}
+                                                    >
+                                                        ₹
+                                                        {Number(
+                                                            order.refundAmount ??
+                                                                order.totalAmount ??
+                                                                0
+                                                        ).toFixed(2)}
+                                                    </strong>
+                                                </div>
+
+                                                <div>
+                                                    <small
+                                                        style={{
+                                                            display:
+                                                                "block",
+                                                            color:
+                                                                "#6b7280",
+                                                            marginBottom:
+                                                                "4px",
+                                                        }}
+                                                    >
+                                                        Transaction ID
+                                                    </small>
+
+                                                    <strong
+                                                        style={{
+                                                            wordBreak:
+                                                                "break-all",
+                                                        }}
+                                                    >
+                                                        {order.refundTransactionId ||
+                                                            "N/A"}
+                                                    </strong>
+                                                </div>
+
+                                                <div>
+                                                    <small
+                                                        style={{
+                                                            display:
+                                                                "block",
+                                                            color:
+                                                                "#6b7280",
+                                                            marginBottom:
+                                                                "4px",
+                                                        }}
+                                                    >
+                                                        Refund Date
+                                                    </small>
+
+                                                    <strong>
+                                                        {formatDate(
+                                                            order.refundDate
+                                                        )}
+                                                    </strong>
+                                                </div>
+
+                                            </div>
+
+                                            {order.returnReason && (
+                                                <p
+                                                    style={{
+                                                        marginTop:
+                                                            "12px",
+                                                    }}
+                                                >
+                                                    <strong>
+                                                        Return Reason:
+                                                    </strong>{" "}
+                                                    {order.returnReason}
+                                                </p>
+                                            )}
+
+                                        </div>
+                                    )}
+
+                                </div>
+                            )}
 
                             {/* TRACKING */}
 

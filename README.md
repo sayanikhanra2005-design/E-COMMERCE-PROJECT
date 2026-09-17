@@ -1,27 +1,30 @@
-# ShopStack — Java Enterprise Multi-Vendor E-Commerce Platform
+# 🛒 ShopStack — Java Enterprise Multi-Vendor E-Commerce Platform
 
 ## 📌 Project Overview
 
 **ShopStack** is a full-stack multi-vendor e-commerce platform developed as part of the **Infosys Springboard Virtual Internship**.
 
-The platform allows customers to browse products, manage their shopping cart, apply coupons, place orders, make payments, track orders, request returns and receive refunds.
+The platform provides separate functionality for **Customers, Vendors, Administrators, and Warehouse Staff**.
 
-Vendors can manage products, inventory and customer orders, while administrators can manage vendors, products, orders, returns, refunds and commission reports.
+Customers can browse products, manage their shopping cart, apply coupons, place orders, make payments, track orders, request returns, and view refund information.
 
-The application is designed using a **React.js frontend, Spring Boot backend and PostgreSQL database**.
+Vendors can manage products, pricing, inventory, and customer orders. Administrators can manage vendors, products, orders, returns, refunds, coupons, and commission information.
+
+The application is built using a **React.js frontend, Spring Boot backend, and PostgreSQL database**.
 
 ---
 
 ## 🎯 Objectives
 
 * Develop a complete multi-vendor e-commerce platform.
-* Provide separate functionalities for Customers, Vendors, Administrators and Warehouse Staff.
+* Provide separate functionality for Customers, Vendors, Administrators, and Warehouse Staff.
 * Implement secure authentication and role-based authorization.
-* Manage products, inventory, carts and orders.
+* Manage products, inventory, carts, and orders.
 * Provide coupon and commission management.
 * Implement return and refund workflows.
+* Integrate online payment processing.
 * Provide responsive and user-friendly interfaces.
-* Handle invalid requests and server/API errors gracefully.
+* Handle invalid requests and API/server errors gracefully.
 
 ---
 
@@ -50,30 +53,33 @@ Customers can:
 Vendors can:
 
 * Access the vendor dashboard.
-* Manage products.
+* Create and manage products.
 * Manage product prices and details.
+* Set original prices and discount percentages.
+* View calculated selling prices.
 * Monitor inventory.
+* Manage product stock.
 * View customer orders.
 * Update order status.
-* Track product stock.
 
 ### 👑 Administrator
 
 Administrators can:
 
 * Access the admin dashboard.
-* Manage vendors.
+* Manage customers and vendors.
 * Approve or reject vendors.
 * Manage products.
 * Monitor orders.
 * Manage returns and refunds.
+* Manage coupons.
 * View commission records.
 * View commission reports.
 * Monitor platform activity.
 
 ### 🏭 Warehouse Staff
 
-Warehouse staff are intended to support warehouse and shipment-related operations within the platform.
+Warehouse staff support inventory and shipment-related operations within the platform.
 
 ---
 
@@ -84,9 +90,11 @@ Warehouse staff are intended to support warehouse and shipment-related operation
 * User registration
 * User login
 * JWT-based authentication
+* Spring Security
 * Role-based authorization
-* Protected API endpoints
-* Customer, Vendor and Administrator access control
+* Protected REST API endpoints
+* Customer, Vendor, Administrator, and Warehouse access control
+* Password encryption
 
 ### 🛍️ Product Management
 
@@ -96,6 +104,9 @@ Warehouse staff are intended to support warehouse and shipment-related operation
 * Vendor-specific products
 * Product quantity management
 * Product availability checking
+* Original price management
+* Discount percentage management
+* Automatic selling-price calculation
 
 ### 🛒 Shopping Cart
 
@@ -117,11 +128,11 @@ Customers can:
 ### 🎟️ Coupon Management
 
 * Display active coupons
-* Select available coupons
 * Validate coupon codes
 * Handle invalid or expired coupons
 * Apply discounts during checkout
 * Track coupon usage
+* Minimum order amount validation
 
 ### 💳 Checkout & Payment
 
@@ -139,6 +150,13 @@ The system validates:
 * Coupon validity
 * Payment method
 
+The platform supports:
+
+* Razorpay payment integration
+* Test-mode payment processing
+* Cash on Delivery
+* Server-side payment verification
+
 ### 📦 Order Management
 
 Customers can:
@@ -149,20 +167,20 @@ Customers can:
 * Track order status
 * Request returns
 
-Vendors/Admins can manage order status.
+Vendors and administrators can manage order status.
 
 Order status flow:
 
 **PENDING → CONFIRMED → SHIPPED → DELIVERED**
 
-Orders can also be cancelled when permitted.
+Orders may also be cancelled when permitted.
 
 ### 📊 Inventory Management
 
-When an order is successfully placed:
+When an order is successfully processed:
 
 1. Product stock is checked.
-2. Order is saved.
+2. Order is created.
 3. Order items are created.
 4. Product quantity is reduced.
 5. Inventory quantity is updated.
@@ -173,30 +191,28 @@ Insufficient-stock situations are handled with user-friendly error messages.
 
 ### ↩️ Return Management
 
-Customers can request a return after an eligible order has been delivered.
+Customers can request returns for eligible delivered orders.
 
 Return workflow:
 
 **DELIVERED → RETURN REQUESTED → APPROVED / REJECTED**
 
-The customer must provide a return reason.
+Customers provide a return reason when submitting a request.
 
 ### 💰 Refund Management
 
 Approved returns can proceed to refund processing.
 
-The system stores:
+The system maintains refund information such as:
 
 * Refund amount
 * Refund transaction ID
 * Refund date
 * Refund status
 
-Refund transaction IDs are generated for processed refunds.
-
 ### 💼 Commission Management
 
-The platform calculates vendor commission for completed orders.
+The platform maintains vendor commission information for completed orders.
 
 Commission information includes:
 
@@ -207,18 +223,18 @@ Commission information includes:
 * Product
 * Order
 
-Administrators can view commission reports.
+Administrators can view commission records and reports.
 
 ### 📱 Responsive Design
 
-The frontend is designed to support:
+The frontend supports different screen sizes, including:
 
-* Desktop
-* Laptop
-* Tablet
 * Mobile
+* Tablet
+* Laptop
+* Desktop
 
-Responsive layouts have been implemented for:
+Responsive layouts are implemented across major areas such as:
 
 * Customer Dashboard
 * Products
@@ -241,6 +257,7 @@ Responsive layouts have been implemented for:
 * CSS3
 * Axios
 * Vite
+* React Router
 
 ### Backend
 
@@ -257,13 +274,21 @@ Responsive layouts have been implemented for:
 
 * PostgreSQL
 
-### Development Tools
+### Payment
+
+* Razorpay
+
+### Development & Deployment Tools
 
 * Visual Studio Code
 * pgAdmin
 * Postman
 * Git
 * GitHub
+* Docker
+* Docker Compose
+* AWS EC2
+* Vercel
 
 ---
 
@@ -291,8 +316,16 @@ Responsive layouts have been implemented for:
                                │ JPA / Hibernate
                                ▼
                     ┌──────────────────────┐
-                    │     PostgreSQL       │
-                    │       Database       │
+                    │      PostgreSQL       │
+                    │       Database        │
+                    └──────────────────────┘
+
+                               │
+                               │ Payment API
+                               ▼
+                    ┌──────────────────────┐
+                    │      Razorpay        │
+                    │   Payment Gateway    │
                     └──────────────────────┘
 ```
 
@@ -375,35 +408,35 @@ Customer Orders
 
 ```text
 Delivered Order
-      │
-      ▼
+       │
+       ▼
 Customer Requests Return
-      │
-      ▼
+       │
+       ▼
 Admin Reviews Request
-      │
-      ├──────────────► Reject
-      │
-      ▼
-    Approve
-      │
-      ▼
+       │
+       ├──────────────► Reject
+       │
+       ▼
+     Approve
+       │
+       ▼
 Inventory Restored
-      │
-      ▼
+       │
+       ▼
 Refund Processed
-      │
-      ▼
-REFUNDED
+       │
+       ▼
+    REFUNDED
 ```
 
 ---
 
 ## ⚠️ Error Handling
 
-The application provides user-friendly error handling for common scenarios.
+ShopStack provides user-friendly handling for common application and API errors.
 
-Handled cases include:
+Handled scenarios include:
 
 * Invalid login credentials
 * Duplicate registration
@@ -422,13 +455,13 @@ Handled cases include:
 * Invalid return request
 * Refund errors
 
-Instead of displaying technical stack traces, the frontend displays understandable messages to the user.
+The frontend displays understandable error messages instead of exposing technical server details to users.
 
 ---
 
 ## 🧪 Testing
 
-The following areas were tested:
+The application has been tested across major functional areas.
 
 ### Authentication
 
@@ -471,7 +504,7 @@ The following areas were tested:
 ### Vendor
 
 * Product management
-* Inventory
+* Inventory management
 * Order management
 * Order status updates
 
@@ -481,11 +514,12 @@ The following areas were tested:
 * Product management
 * Order management
 * Returns/refunds
+* Coupon management
 * Commission reports
 
 ### Responsive Testing
 
-The UI was tested across different screen sizes, including:
+The UI has been tested across different screen sizes, including:
 
 * Mobile: 375 × 667
 * Mobile: 390 × 844
@@ -495,21 +529,22 @@ The UI was tested across different screen sizes, including:
 
 ---
 
-## 🚀 How to Run the Project
+# 🚀 How to Run the Project
 
-### Prerequisites
+## Prerequisites
 
-Install:
+Install the following:
 
 * Java 21
 * Node.js
 * PostgreSQL
 * Git
+* Maven
 * Visual Studio Code or another IDE
 
 ---
 
-### Backend Setup
+## Backend Setup
 
 Navigate to the backend project:
 
@@ -523,7 +558,7 @@ Configure PostgreSQL database settings in:
 src/main/resources/application.properties
 ```
 
-Create/use the PostgreSQL database:
+Create or use the PostgreSQL database:
 
 ```text
 authentication_db
@@ -535,7 +570,7 @@ Run the backend:
 mvnw.cmd spring-boot:run
 ```
 
-Backend runs on:
+The backend runs on:
 
 ```text
 http://localhost:8080
@@ -543,7 +578,7 @@ http://localhost:8080
 
 ---
 
-### Frontend Setup
+## Frontend Setup
 
 Navigate to the frontend:
 
@@ -563,11 +598,7 @@ Start the development server:
 npm.cmd run dev
 ```
 
-Frontend runs on:
-
-```text
-http://localhost:5173
-```
+Vite will display the frontend URL in the terminal.
 
 ---
 
@@ -587,125 +618,195 @@ npm.cmd run build
 
 ---
 
-## 🔒 Security
+# 🐳 Docker Deployment
 
-The application uses:
+ShopStack can be run using Docker and Docker Compose.
+
+The main services are:
+
+```text
+┌─────────────────────────────┐
+│     shopstack-frontend      │
+│       React + Nginx         │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│      shopstack-backend      │
+│       Spring Boot           │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│     shopstack-postgres      │
+│       PostgreSQL            │
+└─────────────────────────────┘
+```
+
+### Start all services
+
+```bash
+docker-compose up -d --build
+```
+
+### Check service status
+
+```bash
+docker-compose ps
+```
+
+### View backend logs
+
+```bash
+docker-compose logs -f backend
+```
+
+### View frontend logs
+
+```bash
+docker-compose logs -f frontend
+```
+
+---
+
+# ☁️ Deployment Architecture
+
+ShopStack supports local development as well as cloud-based deployment.
+
+```text
+                         ┌─────────────────────┐
+                         │   GitHub Repository  │
+                         └──────────┬──────────┘
+                                    │
+                       ┌────────────┴────────────┐
+                       │                         │
+                       ▼                         ▼
+              ┌────────────────┐        ┌────────────────┐
+              │     Vercel     │        │    AWS EC2     │
+              │ React Frontend │        │ Spring Boot    │
+              │                │        │ + Docker       │
+              └───────┬────────┘        └───────┬────────┘
+                      │                         │
+                      │      REST API           │
+                      └─────────────────────────┘
+                                                │
+                                                ▼
+                                      ┌─────────────────┐
+                                      │   PostgreSQL    │
+                                      │    Database     │
+                                      └─────────────────┘
+```
+
+### 1. Local Development
+
+Developers can run:
+
+* Spring Boot backend locally
+* React frontend locally
+* PostgreSQL locally
+
+### 2. AWS EC2 Deployment
+
+The backend can be deployed to an AWS EC2 instance using Docker.
+
+The repository can be synchronized on the EC2 instance using Git:
+
+```bash
+git pull origin main
+```
+
+Docker services can then be rebuilt and restarted using:
+
+```bash
+docker-compose up -d --build
+```
+
+### 3. Vercel Frontend Deployment
+
+The React frontend can be deployed through Vercel.
+
+Frontend API configuration is controlled using the environment variable:
+
+```text
+VITE_API_URL
+```
+
+This allows the frontend to communicate with the appropriate Spring Boot backend without hard-coding the API server throughout the application.
+
+---
+
+# 🔒 Security
+
+ShopStack uses several security mechanisms:
 
 * JWT authentication
-* Password encryption
 * Spring Security
+* BCrypt password encryption
 * Role-based authorization
 * Protected REST endpoints
 * Token-based API access
+* Server-side payment verification
 
-Sensitive credentials should not be committed to the GitHub repository.
+Sensitive credentials such as database passwords and payment gateway secrets should be stored using environment variables and **must not be committed to GitHub**.
 
 ---
 
----
+# 💳 Payment Security
 
-## 🚀 Deployment Architecture & Modes
+Razorpay payment processing uses server-side verification.
 
-ShopStack supports multiple deployment environments, ranging from local developer workflows to containerized and cloud architectures:
+The general flow is:
 
-```
-                  ┌─────────────────────────────────────────────────────────┐
-                  │                 GitHub Repository                       │
-                  │   https://github.com/sayanikhanra2005-design/...        │
-                  └────────────┬───────────────────────────────┬────────────┘
-                               │ (Automated CI/CD)             │ (Manual Git Pull)
-                               ▼                               ▼
-       ┌───────────────────────────────┐     ┌──────────────────────────────────┐
-       │         Vercel Edge           │     │            AWS EC2               │
-       │    (React Production CDN)     │     │      (Public Host: 16.16.78.80)  │
-       │  - Auto-builds on push        │     │                                  │
-       │  - HTTPS / SSL Global Edge    │     │   ┌───────────────────────────┐  │
-       │  - Dynamic SPA routing        │     │   │     Docker Compose        │  │
-       └───────────────┬───────────────┘     │   │                           │  │
-                       │                     │   │ ┌───────────────────────┐ │  │
-                       │ (HTTPS / REST APIs) │   │ │  shopstack-frontend   │ │  │
-                       │                     │   │ │  (Nginx Alpine :80)   │ │  │
-                       └─────────────────────┼──►│ └───────────────────────┘ │  │
-                                             │   │ ┌───────────────────────┐ │  │
-                                             │   │ │   shopstack-backend   │ │  │
-                                             │   │ │ (Spring Boot :8080)   │ │  │
-                                             │   │ └───────────┬───────────┘ │  │
-                                             │   │             │ (JDBC)      │  │
-                                             │   │ ┌───────────▼───────────┐ │  │
-                                             │   │ │   shopstack-postgres  │ │  │
-                                             │   │ │  (PostgreSQL :5432)   │ │  │
-                                             │   │ └───────────────────────┘ │  │
-                                             │   └───────────────────────────┘  │
-                                             └──────────────────────────────────┘
+```text
+Customer
+   │
+   ▼
+Checkout
+   │
+   ▼
+Create Payment Order
+   │
+   ▼
+Razorpay Checkout
+   │
+   ▼
+Payment
+   │
+   ▼
+Server-side Verification
+   │
+   ▼
+Order Processing
 ```
 
-### 1. Manual AWS EC2 Deployment
-* **Workflow**: The administrator connects via SSH to the remote AWS EC2 instance (`16.16.78.80`), synchronizes the repository using `git pull origin main`, and manages service state.
-* **Characteristics**: Provides full administrative control over instance resources, logging, and environment variables without requiring automated external agents.
-
-### 2. Docker Multi-Container Deployment
-The entire platform is orchestrated through `docker-compose.yml`:
-* **`shopstack-postgres`**: PostgreSQL 18 container with persistent volume storage (`postgres_data`) and integrated healthcheck (`pg_isready`).
-* **`shopstack-backend`**: Multi-stage Java 21 container packaging the Spring Boot application, dynamically configured through `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, and `DB_PASSWORD`.
-* **`shopstack-frontend`**: Multi-stage Node 24 build container serving optimized production assets through Nginx Alpine with custom SPA routing (`try_files $uri $uri/ /index.html;`).
-
-#### Docker Compose Commands:
-```bash
-# Start all services in detached mode
-docker compose up -d --build
-
-# Inspect container status and health
-docker compose ps
-
-# View unified or service-specific logs
-docker compose logs -f backend
-docker compose logs -f frontend
-```
-
-### 3. Automated GitHub CI/CD Pipeline (Vercel Frontend)
-* **Workflow**: When frontend source code is pushed to the `main` branch on GitHub, Vercel automatically detects the commit, runs `npm run build`, and redeploys the live frontend across its global edge network.
-* **Environment Synchronization**: The Vercel frontend communicates with the EC2 backend via `VITE_API_URL`.
+Payment credentials are configured through environment variables rather than being exposed in the frontend source code.
 
 ---
 
-## 🛡️ AWS Security Group Port Configuration
-
-To ensure accessibility from external client browsers and secure backend communication, the EC2 Security Group must have the following Inbound Rules configured:
-
-| Port | Protocol | Source | Purpose | Required For |
-| :--- | :--- | :--- | :--- | :--- |
-| **22** | TCP | `Your IP` or `0.0.0.0/0` | SSH Administration | Remote instance access |
-| **80** | TCP | `0.0.0.0/0` | HTTP Web Access | React frontend (Nginx) |
-| **8080** | TCP | `0.0.0.0/0` | Spring Boot REST API | Frontend-to-Backend API calls |
-| **443** | TCP | `0.0.0.0/0` | HTTPS Secured Traffic | SSL-encrypted web and API traffic |
-
-> [!NOTE]
-> **Troubleshooting External Access**:
-> If the application is running locally inside EC2 (e.g., `curl http://localhost` returns 200 OK) but `http://16.16.78.80/` does not load in your local browser, ensure that **Port 80** and **Port 8080** are explicitly permitted under **AWS Console $\rightarrow$ EC2 $\rightarrow$ Instances $\rightarrow$ Security $\rightarrow$ Inbound Rules**.
-
----
-
-## 📈 Future Enhancements
+# 📈 Future Enhancements
 
 Possible future improvements include:
 
-* Real online payment gateway integration
+* Production payment gateway configuration
+* Additional payment gateway integrations
 * SMS notifications
 * Advanced product search
 * Product reviews and ratings
 * Wishlist improvements
 * Advanced analytics
+* Vendor analytics
 * AI-powered product recommendations
+* Improved reporting and dashboards
 
 ---
 
-## 🎓 Project Information
+# 🎓 Project Information
 
 **Project:** ShopStack — Java Enterprise Multi-Vendor E-Commerce Platform
 
 **Program:** Infosys Springboard Virtual Internship
 
-**Technology:** Java Enterprise / Spring Boot / React.js
+**Technology:** Java 21 / Spring Boot / React.js / PostgreSQL
 
 **Department:** Information Technology
 
@@ -713,7 +814,7 @@ Possible future improvements include:
 
 ---
 
-## 👩‍💻 Developer
+# 👩‍💻 Developer
 
 **Sayani Khanra**
 
@@ -723,13 +824,28 @@ St. Thomas' College of Engineering & Technology
 
 ---
 
-## 📌 Project Status
+# 📌 Project Status
 
-**Development:** Completed
-**Backend Build:** Successful
-**Frontend Build:** Successful
-**Testing:** Completed
-**Responsive UI:** Implemented
-**Error Handling:** Implemented
+| Area                       | Status      |
+| -------------------------- | ----------- |
+| Development                | Completed   |
+| Backend Build              | Successful  |
+| Frontend Build             | Successful  |
+| Responsive UI              | Implemented |
+| Authentication             | Implemented |
+| Product Management         | Implemented |
+| Cart & Checkout            | Implemented |
+| Order Management           | Implemented |
+| Inventory Management       | Implemented |
+| Return & Refund Workflow   | Implemented |
+| Payment Integration        | Implemented |
+| Error Handling             | Implemented |
+| Docker Deployment          | Configured  |
+| AWS Deployment             | Configured  |
+| Vercel Frontend Deployment | Configured  |
 
-### ✅ Project Ready for Final Submission
+---
+
+## ✅ Project Ready for Final Demonstration
+
+ShopStack brings together product management, multi-role access control, shopping cart functionality, checkout, payments, orders, inventory, returns, refunds, coupons, commissions, and cloud deployment into a single enterprise-style e-commerce platform.

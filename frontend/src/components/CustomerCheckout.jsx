@@ -49,6 +49,14 @@ function CustomerCheckout({
     const [orderError, setOrderError] = useState("");
 
     // =========================================================
+    // PAYMENT SUCCESS
+    // =========================================================
+
+    const [paymentSuccess, setPaymentSuccess] = useState(false);
+    const [completedOrder, setCompletedOrder] = useState(null);
+    const [completedPayment, setCompletedPayment] = useState(null);
+
+    // =========================================================
     // COUPON
     // =========================================================
 
@@ -120,6 +128,43 @@ function CustomerCheckout({
         subtotal - discount,
         0
     );
+
+    // =========================================================
+    // PAYMENT SUCCESS TOTAL
+    // =========================================================
+
+    const getCompletedOrderTotal = () => {
+
+        const backendTotal = Number(
+            completedOrder?.totalAmount ??
+            completedPayment?.amount ??
+            finalTotal
+        );
+
+        if (
+            Number.isFinite(backendTotal) &&
+            backendTotal >= 0
+        ) {
+            return backendTotal;
+        }
+
+        return finalTotal;
+    };
+
+    // =========================================================
+    // PAYMENT ID
+    // =========================================================
+
+    const getPaymentId = () => {
+
+        return (
+            completedPayment?.paymentId ??
+            completedPayment?.razorpayPaymentId ??
+            completedPayment?.transactionId ??
+            completedPayment?.paymentTransactionId ??
+            "—"
+        );
+    };
 
     // =========================================================
     // RAZORPAY SCRIPT
@@ -977,16 +1022,26 @@ function CustomerCheckout({
                 response.data
             );
 
+            // =================================================
+            // IMPORTANT:
+            // DO NOT CALL onOrderPlaced HERE.
+            //
+            // We first show the payment success screen.
+            // =================================================
+
+            setCompletedOrder(
+                response.data
+            );
+
+            setCompletedPayment(
+                response.data
+            );
+
             setPaymentProcessing(false);
             setPlacingOrder(false);
             setOrderError("");
 
-            if (onOrderPlaced) {
-
-                onOrderPlaced(
-                    response.data
-                );
-            }
+            setPaymentSuccess(true);
 
         } catch (error) {
 
@@ -1058,11 +1113,14 @@ function CustomerCheckout({
                 );
             }
 
+            const amountInRupees =
+                Number(
+                    razorpayData.amount
+                );
+
             const razorpayAmount =
                 Math.round(
-                    Number(
-                        razorpayData.amount
-                    ) * 100
+                    amountInRupees * 100
                 );
 
             if (
@@ -1106,6 +1164,13 @@ function CustomerCheckout({
 
                 theme: {
                     color: "#2563eb"
+                },
+
+                prefill: {
+
+                    contact:
+                        selectedAddress?.phoneNumber ||
+                        undefined
                 },
 
                 handler:
@@ -1289,8 +1354,6 @@ function CustomerCheckout({
                     `Invalid quantity for ${item.name}. Please update your cart.`
                 );
 
-                setStep(1);
-
                 return;
             }
 
@@ -1299,8 +1362,6 @@ function CustomerCheckout({
                 setOrderError(
                     `${item.name} is currently out of stock.`
                 );
-
-                setStep(1);
 
                 return;
             }
@@ -1313,8 +1374,6 @@ function CustomerCheckout({
                 setOrderError(
                     `Only ${availableQuantity} units of ${item.name} are available. Please update your cart.`
                 );
-
-                setStep(1);
 
                 return;
             }
@@ -1402,16 +1461,20 @@ function CustomerCheckout({
                 paymentMethod === "COD"
             ) {
 
+                setCompletedOrder(
+                    orderData
+                );
+
+                setCompletedPayment(
+                    null
+                );
+
                 setPaymentProcessing(false);
                 setPlacingOrder(false);
                 setOrderError("");
 
-                if (onOrderPlaced) {
-
-                    onOrderPlaced(
-                        orderData
-                    );
-                }
+                // Show confirmation first.
+                setPaymentSuccess(true);
 
                 return;
             }
@@ -1469,6 +1532,21 @@ function CustomerCheckout({
     };
 
     // =========================================================
+    // FINISH SUCCESSFUL ORDER
+    // =========================================================
+
+    const handleFinishOrder = () => {
+
+        if (onOrderPlaced) {
+
+            onOrderPlaced(
+                completedOrder ||
+                completedPayment
+            );
+        }
+    };
+
+    // =========================================================
     // EMPTY CART
     // =========================================================
 
@@ -1506,20 +1584,312 @@ function CustomerCheckout({
     }
 
     // =========================================================
-    // MAIN UI
+    // PAYMENT SUCCESS / ORDER CONFIRMATION
+    // =========================================================
+
+    if (paymentSuccess) {
+
+        const completedTotal =
+            getCompletedOrderTotal();
+
+        const completedOrderId =
+            completedOrder?.id ??
+            completedPayment?.orderId ??
+            "—";
+
+        const completedPaymentId =
+            getPaymentId();
+
+        const isCOD =
+            paymentMethod === "COD";
+
+        return (
+
+            <div className="checkout-page">
+
+                <div className="payment-success-screen">
+
+                    <div className="payment-success-card">
+
+                        {/* SUCCESS ICON */}
+
+                        <div className="payment-success-icon">
+                            ✓
+                        </div>
+
+                        {/* TITLE */}
+
+                        <h1>
+                            {
+                                isCOD
+                                    ? "Order Placed Successfully!"
+                                    : "Payment Successful!"
+                            }
+                        </h1>
+
+                        <p className="payment-success-subtitle">
+
+                            {
+                                isCOD
+                                    ? "Thank you for your order. Your order has been confirmed and will be delivered to you."
+                                    : "Thank you for your payment. Your order has been successfully confirmed."
+                            }
+
+                        </p>
+
+                        {/* ORDER INFORMATION */}
+
+                        <div className="payment-success-order-info">
+
+                            <div>
+
+                                <span>
+                                    Order ID
+                                </span>
+
+                                <strong>
+                                    #{completedOrderId}
+                                </strong>
+
+                            </div>
+
+                            {!isCOD && (
+
+                                <div>
+
+                                    <span>
+                                        Payment ID
+                                    </span>
+
+                                    <strong>
+                                        {completedPaymentId}
+                                    </strong>
+
+                                </div>
+
+                            )}
+
+                            <div>
+
+                                <span>
+                                    Payment Method
+                                </span>
+
+                                <strong>
+                                    {
+                                        isCOD
+                                            ? "💵 Cash on Delivery"
+                                            : "💳 Razorpay"
+                                    }
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+                        {/* PAYMENT BREAKDOWN */}
+
+                        <div className="payment-success-breakdown">
+
+                            <h3>
+                                Payment Summary
+                            </h3>
+
+                            <div className="payment-success-row">
+
+                                <span>
+                                    Item Total
+                                </span>
+
+                                <strong>
+                                    ₹
+                                    {subtotal.toFixed(2)}
+                                </strong>
+
+                            </div>
+
+                            <div className="payment-success-row">
+
+                                <span>
+                                    Discount
+                                </span>
+
+                                <strong className="payment-success-discount">
+
+                                    {
+                                        discount > 0
+                                            ? `-₹${discount.toFixed(2)}`
+                                            : "₹0.00"
+                                    }
+
+                                </strong>
+
+                            </div>
+
+                            <div className="payment-success-row">
+
+                                <span>
+                                    Delivery
+                                </span>
+
+                                <strong className="payment-success-free">
+                                    Free
+                                </strong>
+
+                            </div>
+
+                            <div className="payment-success-row">
+
+                                <span>
+                                    Platform Charge
+                                </span>
+
+                                <strong className="payment-success-free">
+                                    Free
+                                </strong>
+
+                            </div>
+
+                            <div className="payment-success-total">
+
+                                <span>
+                                    {
+                                        isCOD
+                                            ? "Total Payable"
+                                            : "Total Paid"
+                                    }
+                                </span>
+
+                                <strong>
+                                    ₹
+                                    {completedTotal.toFixed(2)}
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+                        {/* DELIVERY ADDRESS */}
+
+                        {selectedAddress && (
+
+                            <div className="payment-success-address">
+
+                                <h3>
+                                    📍 Delivery Address
+                                </h3>
+
+                                <strong>
+                                    {
+                                        selectedAddress.addressLine
+                                    }
+                                </strong>
+
+                                <p>
+                                    {
+                                        selectedAddress.city
+                                    }
+                                    ,{" "}
+                                    {
+                                        selectedAddress.state
+                                    }{" "}
+                                    {
+                                        selectedAddress.postalCode
+                                    }
+                                </p>
+
+                                <p>
+                                    {
+                                        selectedAddress.country
+                                    }
+                                </p>
+
+                                <p>
+                                    📞{" "}
+                                    {
+                                        selectedAddress.phoneNumber
+                                    }
+                                </p>
+
+                            </div>
+
+                        )}
+
+                        {/* SUCCESS MESSAGE */}
+
+                        <div className="payment-success-method">
+
+                            <span>
+                                🔒
+                            </span>
+
+                            <p>
+
+                                {
+                                    isCOD
+                                        ? "Your order has been securely recorded by ShopStack."
+                                        : "Your payment has been securely verified and your order is confirmed."
+                                }
+
+                            </p>
+
+                        </div>
+
+                        {/* ACTIONS */}
+
+                        <div className="payment-success-actions">
+
+                            <button
+                                type="button"
+                                className="payment-success-primary-btn"
+                                onClick={
+                                    handleFinishOrder
+                                }
+                            >
+                                View My Orders
+                            </button>
+
+                            <button
+                                type="button"
+                                className="payment-success-secondary-btn"
+                                onClick={
+                                    handleFinishOrder
+                                }
+                            >
+                                Continue Shopping
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        );
+    }
+
+    // =========================================================
+    // MAIN CHECKOUT UI
     // =========================================================
 
     return (
 
         <div className="checkout-page">
 
-            {/* HEADER */}
+            {/* =================================================
+                HEADER
+            ================================================= */}
 
             <div className="checkout-header">
 
                 <button
                     className="checkout-back-btn"
                     onClick={onBackToCart}
+                    disabled={
+                        placingOrder ||
+                        paymentProcessing
+                    }
                 >
                     ← Back to Cart
                 </button>
@@ -1538,7 +1908,9 @@ function CustomerCheckout({
 
             </div>
 
-            {/* STEPS */}
+            {/* =================================================
+                STEPS
+            ================================================= */}
 
             <div className="checkout-steps">
 
@@ -2148,6 +2520,10 @@ function CustomerCheckout({
                                         onClick={() =>
                                             setStep(1)
                                         }
+                                        disabled={
+                                            placingOrder ||
+                                            paymentProcessing
+                                        }
                                     >
                                         Change
                                     </button>
@@ -2210,6 +2586,10 @@ function CustomerCheckout({
                                         type="button"
                                         onClick={() =>
                                             setStep(2)
+                                        }
+                                        disabled={
+                                            placingOrder ||
+                                            paymentProcessing
                                         }
                                     >
                                         Change
@@ -2279,6 +2659,12 @@ function CustomerCheckout({
                                                                 coupon.discount ??
                                                                 coupon.discountPercentage;
 
+                                                            const discountType =
+                                                                String(
+                                                                    coupon.discountType ??
+                                                                    "PERCENTAGE"
+                                                                ).toUpperCase();
+
                                                             return (
 
                                                                 <option
@@ -2298,7 +2684,11 @@ function CustomerCheckout({
                                                                     {
                                                                         discountValue !== undefined &&
                                                                         discountValue !== null
-                                                                            ? ` - ${discountValue}% OFF`
+                                                                            ? discountType === "FIXED" ||
+                                                                              discountType === "FLAT" ||
+                                                                              discountType === "AMOUNT"
+                                                                                ? ` - ₹${discountValue} OFF`
+                                                                                : ` - ${discountValue}% OFF`
                                                                             : ""
                                                                     }
 
@@ -2375,6 +2765,10 @@ function CustomerCheckout({
                                             className="remove-coupon-btn"
                                             onClick={
                                                 handleRemoveCoupon
+                                            }
+                                            disabled={
+                                                placingOrder ||
+                                                paymentProcessing
                                             }
                                         >
                                             Remove
@@ -2619,6 +3013,30 @@ function CustomerCheckout({
                             </div>
 
                         )}
+
+                        <div className="summary-row">
+
+                            <span>
+                                Delivery
+                            </span>
+
+                            <strong>
+                                Free
+                            </strong>
+
+                        </div>
+
+                        <div className="summary-row">
+
+                            <span>
+                                Platform Charge
+                            </span>
+
+                            <strong>
+                                Free
+                            </strong>
+
+                        </div>
 
                         <div className="summary-final-total">
 
