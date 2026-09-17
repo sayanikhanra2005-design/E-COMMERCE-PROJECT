@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import "./WarehouseDashboard.css";
 
 function WarehouseDashboard() {
@@ -63,12 +63,6 @@ function WarehouseDashboard() {
         remarks: ""
     });
 
-    const token = localStorage.getItem("token");
-
-    const headers = {
-        Authorization: `Bearer ${token}`
-    };
-
     // =========================================================
     // LOAD WAREHOUSES
     // =========================================================
@@ -77,10 +71,7 @@ function WarehouseDashboard() {
 
         try {
 
-            const response = await axios.get(
-                "http://localhost:8080/warehouse",
-                { headers }
-            );
+            const response = await api.get("/warehouse");
 
             setWarehouses(response.data);
 
@@ -104,10 +95,7 @@ function WarehouseDashboard() {
 
         try {
 
-            const response = await axios.get(
-                "http://localhost:8080/warehouse/allocations",
-                { headers }
-            );
+            const response = await api.get("/warehouse/allocations");
 
             setAllocations(response.data);
 
@@ -131,10 +119,7 @@ function WarehouseDashboard() {
 
         try {
 
-            const response = await axios.get(
-                "http://localhost:8080/warehouse/shipments",
-                { headers }
-            );
+            const response = await api.get("/warehouse/shipments");
 
             setShipments(response.data);
 
@@ -152,7 +137,6 @@ function WarehouseDashboard() {
 
     // =========================================================
     // INITIAL LOAD
-    // IMPORTANT: useEffect is AFTER load functions
     // =========================================================
 
     useEffect(() => {
@@ -162,13 +146,18 @@ function WarehouseDashboard() {
             setLoading(true);
             setError("");
 
-            await Promise.all([
-                loadWarehouses(),
-                loadAllocations(),
-                loadShipments()
-            ]);
+            try {
 
-            setLoading(false);
+                await Promise.all([
+                    loadWarehouses(),
+                    loadAllocations(),
+                    loadShipments()
+                ]);
+
+            } finally {
+
+                setLoading(false);
+            }
         };
 
         loadInitialData();
@@ -216,9 +205,11 @@ function WarehouseDashboard() {
         setError("");
         setLoading(true);
 
-        await loadWarehouses();
-
-        setLoading(false);
+        try {
+            await loadWarehouses();
+        } finally {
+            setLoading(false);
+        }
     };
 
     const openAllocations = async () => {
@@ -227,9 +218,11 @@ function WarehouseDashboard() {
         setError("");
         setLoading(true);
 
-        await loadAllocations();
-
-        setLoading(false);
+        try {
+            await loadAllocations();
+        } finally {
+            setLoading(false);
+        }
     };
 
     const openShipments = async () => {
@@ -238,9 +231,11 @@ function WarehouseDashboard() {
         setError("");
         setLoading(true);
 
-        await loadShipments();
-
-        setLoading(false);
+        try {
+            await loadShipments();
+        } finally {
+            setLoading(false);
+        }
     };
 
     // =========================================================
@@ -368,18 +363,16 @@ function WarehouseDashboard() {
 
             if (editingWarehouse) {
 
-                await axios.put(
-                    `http://localhost:8080/warehouse/${editingWarehouse.id}`,
-                    request,
-                    { headers }
+                await api.put(
+                    `/warehouse/${editingWarehouse.id}`,
+                    request
                 );
 
             } else {
 
-                await axios.post(
-                    "http://localhost:8080/warehouse",
-                    request,
-                    { headers }
+                await api.post(
+                    "/warehouse",
+                    request
                 );
             }
 
@@ -423,9 +416,8 @@ function WarehouseDashboard() {
 
             setError("");
 
-            await axios.delete(
-                `http://localhost:8080/warehouse/${id}`,
-                { headers }
+            await api.delete(
+                `/warehouse/${id}`
             );
 
             await loadWarehouses();
@@ -452,10 +444,9 @@ function WarehouseDashboard() {
 
             setError("");
 
-            await axios.put(
-                `http://localhost:8080/warehouse/${id}/toggle`,
-                {},
-                { headers }
+            await api.put(
+                `/warehouse/${id}/toggle`,
+                {}
             );
 
             await loadWarehouses();
@@ -554,10 +545,9 @@ function WarehouseDashboard() {
                     allocationForm.remarks.trim()
             };
 
-            await axios.post(
-                "http://localhost:8080/warehouse/allocations",
-                request,
-                { headers }
+            await api.post(
+                "/warehouse/allocations",
+                request
             );
 
             setShowAllocationForm(false);
@@ -601,11 +591,10 @@ function WarehouseDashboard() {
 
             setError("");
 
-            await axios.put(
-                `http://localhost:8080/warehouse/allocations/${id}/status`,
+            await api.put(
+                `/warehouse/allocations/${id}/status`,
                 {},
                 {
-                    headers,
                     params: {
                         status: status
                     }
@@ -726,10 +715,9 @@ function WarehouseDashboard() {
                     shipmentForm.remarks.trim()
             };
 
-            await axios.post(
-                "http://localhost:8080/warehouse/shipments",
-                request,
-                { headers }
+            await api.post(
+                "/warehouse/shipments",
+                request
             );
 
             setShowShipmentForm(false);
@@ -776,11 +764,10 @@ function WarehouseDashboard() {
 
             setError("");
 
-            await axios.put(
-                `http://localhost:8080/warehouse/shipments/${id}/status`,
+            await api.put(
+                `/warehouse/shipments/${id}/status`,
                 {},
                 {
-                    headers,
                     params: {
                         status: status
                     }
